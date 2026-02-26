@@ -19,7 +19,7 @@ export const retrieveCustomer =
   async (): Promise<HttpTypes.StoreCustomer | null> => {
     const authHeaders = await getAuthHeaders()
 
-    if (!authHeaders) return null
+    if (!Object.keys(authHeaders).length) return null
 
     const headers = {
       ...authHeaders,
@@ -33,7 +33,7 @@ export const retrieveCustomer =
       .fetch<{ customer: HttpTypes.StoreCustomer }>(`/store/customers/me`, {
         method: "GET",
         query: {
-          fields: "*orders",
+          fields: "*orders,*addresses",
         },
         headers,
         next,
@@ -80,27 +80,19 @@ export async function signup(_currentState: unknown, formData: FormData) {
       ...(await getAuthHeaders()),
     }
 
-    const { customer: createdCustomer } = await sdk.store.customer.create(
+    await sdk.store.customer.create(
       customerForm,
       {},
       headers
     )
 
-    const loginToken = await sdk.auth.login("customer", "emailpass", {
-      email: customerForm.email,
-      password,
-    })
+    // Remove tokens after registration to force manual login
+    await removeAuthToken()
 
-    await setAuthToken(loginToken as string)
-
-    const customerCacheTag = await getCacheTag("customers")
-    revalidateTag(customerCacheTag)
-
-    await transferCart()
-
-    return createdCustomer
+    return { success: true }
   } catch (error: any) {
-    return error.toString()
+    if (error.message === "NEXT_REDIRECT") throw error
+    return { error: error.toString() }
   }
 }
 
@@ -116,18 +108,16 @@ export async function login(_currentState: unknown, formData: FormData) {
         const customerCacheTag = await getCacheTag("customers")
         revalidateTag(customerCacheTag)
       })
-  } catch (error: any) {
-    return error.toString()
-  }
 
-  try {
     await transferCart()
+    redirect("/")
   } catch (error: any) {
-    return error.toString()
+    if (error.message === "NEXT_REDIRECT") throw error
+    return { error: error.toString() }
   }
 }
 
-export async function signout(countryCode: string) {
+export async function signout() {
   await sdk.auth.logout()
 
   await removeAuthToken()
@@ -140,7 +130,7 @@ export async function signout(countryCode: string) {
   const cartCacheTag = await getCacheTag("carts")
   revalidateTag(cartCacheTag)
 
-  redirect(`/${countryCode}/account`)
+  redirect(`/account`)
 }
 
 export async function transferCart() {

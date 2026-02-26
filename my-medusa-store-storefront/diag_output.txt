@@ -1,0 +1,38 @@
+--- Database Connected ---
+
+--- api_key contents ---
+[
+  {
+    "id": "apk_01KHR8AW99NWD93YGJ0FBG7XKC",
+    "token": "pk_1fd48de7f62029167642428cc7a588e21e634e8f41b240f5b391bae65693a3a3",
+    "title": "Default Publishable API Key",
+    "type": "publishable",
+    "revoked_at": null,
+    "deleted_at": null
+  }
+]
+
+--- sales_channel contents ---
+[
+  {
+    "id": "sc_01KHR8AW04HPG3B2X67YKMMVV4",
+    "name": "Default Sales Channel",
+    "is_disabled": false,
+    "deleted_at": null
+  }
+]
+
+--- Searching for association tables ---
+Potential link tables: publishable_api_key_sales_channel
+
+--- Contents of publishable_api_key_sales_channel ---
+[
+  {
+    "publishable_key_id": "apk_01KHR8AW99NWD93YGJ0FBG7XKC",
+    "sales_channel_id": "sc_01KHR8AW04HPG3B2X67YKMMVV4",
+    "id": "pksc_01KHR8AWAMDT7ZB2HBFFBY5QSZ",
+    "created_at": "2026-02-18T11:31:59.444Z",
+    "updated_at": "2026-02-18T11:31:59.444Z",
+    "deleted_at": null
+  }
+]

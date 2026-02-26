@@ -1,0 +1,21 @@
+--- Relevant Tables ---
+product_collection
+product_type
+product_option
+product_option_value
+product_variant_option
+product_tags
+product_tag
+product_category_product
+product_category
+product
+product_variant_product_image
+product_variant
+payment_collection_payment_providers
+payment_collection
+cart_payment_collection
+order_payment_collection
+product_sales_channel
+product_shipping_profile
+product_variant_inventory_item
+product_variant_price_set

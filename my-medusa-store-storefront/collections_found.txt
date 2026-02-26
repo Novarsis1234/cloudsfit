@@ -1,0 +1,12 @@
+[
+  {
+    "id": "pcol_01KHR9WWXH0SN1X0YSA7G7GDNK",
+    "title": "Hoodies",
+    "handle": "hoodies"
+  },
+  {
+    "id": "pcol_01KHRAYKCAN2FCJFY0TDAFAGVS",
+    "title": "Hoodies",
+    "handle": "hoodies"
+  }
+]

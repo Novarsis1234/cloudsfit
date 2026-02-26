@@ -9,9 +9,9 @@ export default function AboutCloudsFit() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
 
           {/* 🔥 LEFT IMAGE */}
-          <div className="relative order-2 lg:order-1">
+          <div className="relative order-1 lg:order-1">
             <div className="relative w-full h-[360px] md:h-[420px] rounded-lg overflow-hidden border-4 border-cloudsfit-purple/30">
-              
+
               {/* ✅ REAL IMAGE */}
               <img
                 src="/images/AboutPic.jpg"   // 👈 apni image ka exact naam yaha likho
@@ -28,7 +28,7 @@ export default function AboutCloudsFit() {
           </div>
 
           {/* 🔥 RIGHT TEXT */}
-          <div className="order-1 lg:order-2">
+          <div className="order-2 lg:order-2">
             <div className="flex items-center gap-2 mb-4">
               <span className="text-cloudsfit-purple">🔮</span>
               <span className="text-sm font-bold tracking-widest uppercase text-cloudsfit-purple">

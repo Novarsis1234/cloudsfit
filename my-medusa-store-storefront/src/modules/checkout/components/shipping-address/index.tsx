@@ -1,10 +1,11 @@
-﻿import { HttpTypes } from "@medusajs/types"
+import { HttpTypes } from "@medusajs/types"
 import { Container } from "@medusajs/ui"
-import Checkbox from "@/modules/common/components/checkbox"
-import Input from "@/modules/common/components/input"
+import Checkbox from "@modules/common/components/checkbox"
+import Input from "@modules/common/components/input"
 import { mapKeys } from "lodash"
 import React, { useEffect, useMemo, useState } from "react"
 import AddressSelect from "../address-select"
+import CountrySelect from "../country-select"
 
 const ShippingAddress = ({
   customer,
@@ -21,10 +22,11 @@ const ShippingAddress = ({
     "shipping_address.first_name": cart?.shipping_address?.first_name || "",
     "shipping_address.last_name": cart?.shipping_address?.last_name || "",
     "shipping_address.address_1": cart?.shipping_address?.address_1 || "",
+    "shipping_address.address_2": cart?.shipping_address?.address_2 || "",
     "shipping_address.company": cart?.shipping_address?.company || "",
     "shipping_address.postal_code": cart?.shipping_address?.postal_code || "",
     "shipping_address.city": cart?.shipping_address?.city || "",
-    "shipping_address.country_code": cart?.shipping_address?.country_code || "in",
+    "shipping_address.country_code": cart?.shipping_address?.country_code || "",
     "shipping_address.province": cart?.shipping_address?.province || "",
     "shipping_address.phone": cart?.shipping_address?.phone || "",
     email: cart?.email || "",
@@ -38,7 +40,7 @@ const ShippingAddress = ({
   // check if customer has saved addresses that are in the current region
   const addressesInRegion = useMemo(
     () =>
-      customer?.addresses.filter(
+      (customer?.addresses || []).filter(
         (a) => a.country_code && countriesInRegion?.includes(a.country_code)
       ),
     [customer?.addresses, countriesInRegion]
@@ -54,6 +56,7 @@ const ShippingAddress = ({
         "shipping_address.first_name": address?.first_name || "",
         "shipping_address.last_name": address?.last_name || "",
         "shipping_address.address_1": address?.address_1 || "",
+        "shipping_address.address_2": address?.address_2 || "",
         "shipping_address.company": address?.company || "",
         "shipping_address.postal_code": address?.postal_code || "",
         "shipping_address.city": address?.city || "",
@@ -138,6 +141,14 @@ const ShippingAddress = ({
           data-testid="shipping-address-input"
         />
         <Input
+          label="Address 2"
+          name="shipping_address.address_2"
+          autoComplete="address-line2"
+          value={formData["shipping_address.address_2"]}
+          onChange={handleChange}
+          data-testid="shipping-address-2-input"
+        />
+        <Input
           label="Company"
           name="shipping_address.company"
           value={formData["shipping_address.company"]}
@@ -163,11 +174,14 @@ const ShippingAddress = ({
           required
           data-testid="shipping-city-input"
         />
-        {/* India-only store: Country is automatically set to India (IN) */}
-        <input
-          type="hidden"
+        <CountrySelect
           name="shipping_address.country_code"
-          value="in"
+          autoComplete="country"
+          region={cart?.region}
+          value={formData["shipping_address.country_code"]}
+          onChange={handleChange}
+          required
+          data-testid="shipping-country-select"
         />
         <Input
           label="State / Province"
@@ -213,4 +227,3 @@ const ShippingAddress = ({
 }
 
 export default ShippingAddress
-

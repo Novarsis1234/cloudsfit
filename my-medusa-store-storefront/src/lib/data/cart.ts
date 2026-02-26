@@ -24,9 +24,10 @@ import { getLocale } from "@/lib/data/locale-actions"
 export async function retrieveCart(cartId?: string, fields?: string) {
   const id = cartId || (await getCartId())
   fields ??=
-    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
+    "*items, *region, *payment_collection, *payment_collection.payment_sessions, *shipping_address, *billing_address, *customer, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
 
   if (!id) {
+    console.log("[retrieveCart] No cart ID found in cookies or provided.")
     return null
   }
 
@@ -38,18 +39,42 @@ export async function retrieveCart(cartId?: string, fields?: string) {
     ...(await getCacheOptions("carts")),
   }
 
-  return await sdk.client
-    .fetch<HttpTypes.StoreCartResponse>(`/store/carts/${id}`, {
-      method: "GET",
-      query: {
-        fields,
-      },
-      headers,
-      next,
-      cache: "force-cache",
-    })
-    .then(({ cart }: { cart: HttpTypes.StoreCart }) => cart)
-    .catch(() => null)
+  try {
+    console.log(`[retrieveCart] Fetching cart: ${id}`)
+    const { cart } = await sdk.client.fetch<HttpTypes.StoreCartResponse>(
+      `/store/carts/${id}`,
+      {
+        method: "GET",
+        query: {
+          fields,
+        },
+        headers,
+        next,
+        cache: "no-store", // Temporary disable cache to debug 404
+      }
+    )
+    return cart
+  } catch (error: any) {
+    const status = error?.response?.status || error?.status
+    const message = String(error?.message || error || "")
+
+    // Stale/unauthorized cart IDs are expected occasionally (expired auth, completed cart, old cookie).
+    if (status === 401 || status === 403 || status === 404) {
+      await removeCartId()
+      console.warn(
+        `[retrieveCart] Cart ${id} is not accessible anymore (status ${status}). Cookie cart ID removed.`
+      )
+      return null
+    }
+
+    if (message.toLowerCase().includes("fetch failed")) {
+      console.warn(`[retrieveCart] Backend unreachable while fetching cart ${id}.`)
+      return null
+    }
+
+    console.warn(`[retrieveCart] Error fetching cart ${id}:`, message)
+    return null
+  }
 }
 
 export async function getOrSetCart(countryCode: string) {
@@ -59,7 +84,14 @@ export async function getOrSetCart(countryCode: string) {
     throw new Error(`Region not found for country code: ${countryCode}`)
   }
 
-  let cart = await retrieveCart(undefined, "id,region_id")
+  let cart = await retrieveCart(undefined, "id,region_id,completed_at")
+
+  // If cart is already completed (converted to order), discard it
+  if (cart?.completed_at) {
+    console.log(`[getOrSetCart] Cart ${cart.id} is already completed. Removing...`)
+    await removeCartId()
+    cart = null
+  }
 
   const headers = {
     ...(await getAuthHeaders()),
@@ -157,6 +189,52 @@ export async function addToCart({
     .catch(medusaError)
 }
 
+export async function syncCart(items: { variantId: string, quantity: number }[], countryCode: string) {
+  const cart = await getOrSetCart(countryCode)
+  if (!cart) {
+    throw new Error("Error retrieving or creating cart")
+  }
+
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  // Retrieve full cart to get item IDs for deletion
+  const existingCart = await retrieveCart(cart.id, "*items")
+
+  if (existingCart?.items) {
+    console.log(`[syncCart] Clearing ${existingCart.items.length} existing items...`)
+    for (const item of existingCart.items) {
+      try {
+        await sdk.store.cart.deleteLineItem(cart.id, item.id, {}, headers)
+      } catch (e) {
+        console.error(`Failed to delete item ${item.id}:`, e)
+      }
+    }
+  }
+
+  // Add items one by one in the backend for simplicity in v2 SDK logic
+  console.log(`[syncCart] Adding ${items.length} new items...`)
+  for (const item of items) {
+    try {
+      await sdk.store.cart.createLineItem(
+        cart.id,
+        {
+          variant_id: item.variantId,
+          quantity: item.quantity,
+        },
+        {},
+        headers
+      )
+    } catch (e) {
+      console.error(`Failed to sync item ${item.variantId}:`, e)
+    }
+  }
+
+  const cartCacheTag = await getCacheTag("carts")
+  revalidateTag(cartCacheTag)
+}
+
 export async function updateLineItem({
   lineId,
   quantity,
@@ -241,18 +319,42 @@ export async function initiatePaymentSession(
   cart: HttpTypes.StoreCart,
   data: HttpTypes.StoreInitializePaymentSession
 ) {
+  // Always use a fresh cart from the backend to avoid stale data
+  const freshCart = await retrieveCart(cart.id)
+
+  if (!freshCart) {
+    throw new Error("Unable to retrieve fresh cart for payment session initiation.")
+  }
+
   const headers = {
     ...(await getAuthHeaders()),
   }
 
   return sdk.store.payment
-    .initiatePaymentSession(cart, data, {}, headers)
-    .then(async (resp) => {
+    .initiatePaymentSession(
+      freshCart,
+      {
+        ...data,
+        // Pass the full cart as `extra` in `data`. The patched Razorpay plugin will
+        // read this from `input.data.extra` as a fallback for `input.context.extra`.
+        data: {
+          ...(data as any).data,
+          extra: freshCart as any,
+        },
+      },
+      {},
+      headers
+    )
+    .then(async (resp: any) => {
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag)
       return resp
     })
-    .catch(medusaError)
+    .catch((err: any) => {
+      console.error(`[initiatePaymentSession] FAILED for provider: ${data.provider_id}`)
+      console.error(`[initiatePaymentSession] Error:`, err.message || err)
+      return medusaError(err)
+    })
 }
 
 export async function applyPromotions(codes: string[]) {
@@ -381,9 +483,7 @@ export async function setAddresses(currentState: unknown, formData: FormData) {
     return e.message
   }
 
-  redirect(
-    `/${formData.get("shipping_address.country_code")}/checkout?step=delivery`
-  )
+  redirect(`/checkout?step=delivery`)
 }
 
 /**
@@ -400,26 +500,118 @@ export async function placeOrder(cartId?: string) {
 
   const headers = {
     ...(await getAuthHeaders()),
+    "Idempotency-Key": `complete-cart-${id}`,
   }
 
-  const cartRes = await sdk.store.cart
-    .complete(id, {}, headers)
-    .then(async (cartRes) => {
-      const cartCacheTag = await getCacheTag("carts")
-      revalidateTag(cartCacheTag)
-      return cartRes
-    })
-    .catch(medusaError)
+  let cartRes: HttpTypes.StoreCompleteCartResponse | undefined
+  let lastError: any
+  const getLatestCustomerOrderId = async (): Promise<string | null> => {
+    try {
+      const { customer } = await sdk.client.fetch<{ customer: any }>(
+        `/store/customers/me`,
+        {
+          method: "GET",
+          query: {
+            fields: "*orders",
+          },
+          headers,
+        }
+      )
+
+      const orders = (customer?.orders || []) as Array<{
+        id: string
+        created_at?: string
+      }>
+
+      if (!orders.length) {
+        return null
+      }
+
+      orders.sort((a, b) => {
+        const aTs = a.created_at ? new Date(a.created_at).getTime() : 0
+        const bTs = b.created_at ? new Date(b.created_at).getTime() : 0
+        return bTs - aTs
+      })
+
+      return orders[0]?.id ?? null
+    } catch {
+      return null
+    }
+  }
+
+  for (let attempt = 0; attempt < 12; attempt++) {
+    try {
+      cartRes = await sdk.store.cart.complete(id, {}, headers)
+      break
+    } catch (error: any) {
+      lastError = error
+      const status = error?.status
+      const message = String(error?.message || "").toLowerCase()
+      const isConflict = status === 409
+      const isRetryable =
+        isConflict ||
+        status === 400 ||
+        status === 422 ||
+        status === 500 ||
+        status === 502 ||
+        status === 503 ||
+        status === 504 ||
+        message.includes("already being completed")
+      const isLastAttempt = attempt === 11
+
+      if (!isRetryable || isLastAttempt) {
+        break
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)))
+    }
+  }
+
+  const cartCacheTag = await getCacheTag("carts")
+  revalidateTag(cartCacheTag)
+
+  // Fallback: in rare race conditions the cart completion can fail although the
+  // order is already created. Recover by redirecting to latest customer order.
+  if (!cartRes) {
+    const recoveredOrderId = await getLatestCustomerOrderId()
+    if (recoveredOrderId) {
+      await removeCartId()
+      redirect(`/order/${recoveredOrderId}/confirmed`)
+    }
+
+    try {
+      const { orders } = await sdk.store.order.list(
+        {
+          limit: 1,
+          offset: 0,
+          order: "-created_at",
+        } as any,
+        headers
+      )
+
+      if (orders?.length) {
+        await removeCartId()
+        redirect(`/order/${orders[0].id}/confirmed`)
+      }
+    } catch {
+      // Keep original error behavior below.
+    }
+
+    medusaError(lastError)
+  }
 
   if (cartRes?.type === "order") {
-    const countryCode =
-      cartRes.order.shipping_address?.country_code?.toLowerCase()
-
     const orderCacheTag = await getCacheTag("orders")
     revalidateTag(orderCacheTag)
 
-    removeCartId()
-    redirect(`/${countryCode}/order/${cartRes?.order.id}/confirmed`)
+    await removeCartId()
+    redirect(`/order/${cartRes?.order.id}/confirmed`)
+  }
+
+  const recoveredOrderId = await getLatestCustomerOrderId()
+  if (recoveredOrderId) {
+    await removeCartId()
+    redirect(`/order/${recoveredOrderId}/confirmed`)
   }
 
   return cartRes.cart
@@ -450,7 +642,7 @@ export async function updateRegion(countryCode: string, currentPath: string) {
   const productsCacheTag = await getCacheTag("products")
   revalidateTag(productsCacheTag)
 
-  redirect(`/${countryCode}${currentPath}`)
+  redirect(`${currentPath}`)
 }
 
 export async function listCartOptions() {

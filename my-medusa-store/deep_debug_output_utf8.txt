@@ -1,0 +1,370 @@
+﻿[32minfo[39m:    redisUrl not found. A fake redis instance will be used.
+[32minfo[39m:    Executing script at ./src/scripts/deep-debug-shipping.ts...
+[32minfo[39m:    redisUrl not found. A fake redis instance will be used.
+[32minfo[39m:    No link to load from C:\PROJECTS\Novarsis\cloudsfit\my-medusa-store\node_modules\@medusajs\draft-order\.medusa\server\src\links. skipped.
+[33mwarn[39m:    Local Event Bus installed. This is not recommended for production.
+[32minfo[39m:    Locking module: Using "in-memory" as default.
+[32minfo[39m:    No workflow to load from C:\PROJECTS\Novarsis\cloudsfit\my-medusa-store\node_modules\@medusajs\draft-order\.medusa\server\src\workflows. skipped.
+[32minfo[39m:    No subscriber to load from C:\PROJECTS\Novarsis\cloudsfit\my-medusa-store\node_modules\@medusajs\draft-order\.medusa\server\src\subscribers. skipped.
+--- DEEP DEBUGGING MISSING SHIPPING ---
+
+1. SHIPPING OPTIONS DEEP DIVE:
+[
+  {
+    "id": "so_01KHZHVQ9S0XMYWD31K7KHYCQY",
+    "name": "Standard Shipping",
+    "price_type": "flat",
+    "provider_id": "manual_manual",
+    "service_zone_id": "serzo_01KHZERCDM8C8JYRT7ES2DGQ01",
+    "service_zone": {
+      "id": "serzo_01KHZERCDM8C8JYRT7ES2DGQ01",
+      "name": "India Shipping Zone",
+      "fulfillment_set_id": "fs_92fmz",
+      "fulfillment_set": {
+        "id": "fs_92fmz",
+        "name": "Standard FS"
+      }
+    },
+    "price_set_link": {
+      "shipping_option_id": "so_01KHZHVQ9S0XMYWD31K7KHYCQY",
+      "price_set_id": "pset_01KHZHVQB9NXQF428B0JS7147P",
+      "price_set": {
+        "id": "pset_01KHZHVQB9NXQF428B0JS7147P",
+        "prices": [
+          {
+            "id": "price_01KHZHVQB7GRMW0T7QFC4Q0DRJ",
+            "amount": 0,
+            "currency_code": "inr"
+          }
+        ]
+      }
+    }
+  }
+]
+
+2. REGIONS:
+[
+  {
+    "id": "reg_01KHX3RT0CD1REK0GABBPY8S2W",
+    "name": "India",
+    "currency_code": "inr",
+    "countries": [
+      {
+        "display_name": "India",
+        "iso_2": "in"
+      }
+    ]
+  }
+]
+
+3. PRODUCTS:
+[
+  {
+    "id": "prod_01KHRAKYEWT0MKM652SK4MF2PF",
+    "title": "Hoodie",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTA4SMN7N9Y4633VKWMCWRM",
+    "title": "Shirt",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTKXQCA2RBZZ6KET00MXV24",
+    "title": "Saari",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTN61WGAB29F569VV7R1YFQ",
+    "title": "Jeans",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTNCZBPN1P4GKT4QHA1S94D",
+    "title": "Formal",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTNJQPWAC32R5M3298EEK7F",
+    "title": "Pant",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTNQHR5FGZ33H0WDGHHD94D",
+    "title": "Jacket",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTRQTVJPWFT7DWPNT5CBD4R",
+    "title": "Kurta",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTRW7DNMADT6QTY9KZPKWN3",
+    "title": "Shirt",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTRXMBZ11V0TFAVCK9DS0F5",
+    "title": "Men-Jeans",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTRZ4YMPJFZY797CY9QVNAP",
+    "title": "Lenhga",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTSA7WEVV3NEZDSZCFSFRPQ",
+    "title": "best shirt",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTSBVDQSG03PGXVD36YZJ6B",
+    "title": "Best Jeans",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTSDRJTC3YWGG0W0NJR7G55",
+    "title": "Formal-Best",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTSHG3C6G73MCGBBGSB3CAV",
+    "title": "Kurta-Men",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTSKAB5EX0G2KRAHZ1B73NF",
+    "title": "jecket-men",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTSKKWRBJMMMWZY7JP2FGDT",
+    "title": "jecket-men",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTSN0BXDS8WYWN6JE6R7TPX",
+    "title": "saari-women",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHTT6ZT6XZCP2WDJV9XJ0SQJ",
+    "title": "Blazzer",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHX303CZQ4WT2NE7DJ46NENQ",
+    "title": "shirt",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHX40QF8C3TVN0FGR9C41FSG",
+    "title": "Premium CloudsFit T-Shirt",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+node.exe : Deep 
+debug failed: Entity 
+'SalesChannel' does 
+not have property 
+'api_keys'
+At C:\Program Files\n
+odejs\npx.ps1:29 
+char:3
++   & $NODE_EXE 
+$NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (Deep de   
+ bug fail...erty     
+'api_keys':Strin    
+g) [], RemoteExc    
+eption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+  },
+  {
+    "id": "prod_01KHX96NMJ0YC8HNTX48J6NPR5",
+    "title": "Urban Cargo Pants",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHX96NMJNC98RQZW65X6YN29",
+    "title": "Cotton Oversized Tee",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHX9TAG91KJHKM85GCJHV7JS",
+    "title": "Urban Hoodie",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  },
+  {
+    "id": "prod_01KHX9TAG948KTCHR10S2RHAZD",
+    "title": "Formal Shirt",
+    "shipping_profile": {
+      "id": "sp_01KHR89VV30KD5KYNXMQQN54CN",
+      "name": "Default Shipping Profile"
+    }
+  }
+]
+
+4. SALES CHANNELS -> API KEYS:
+ValidationError: 
+Entity 
+'SalesChannel' does 
+not have property 
+'api_keys'
+    at Function.inval
+idPropertyName (C:\PR
+OJECTS\Novarsis\cloud
+sfit\my-medusa-store\
+node_modules\@mikro-o
+rm\core\errors.js:58:
+16)
+    at SqlEntityManag
+er.preparePopulate (C
+:\PROJECTS\Novarsis\c
+loudsfit\my-medusa-st
+ore\node_modules\@mik
+ro-orm\core\EntityMan
+ager.js:1632:44)
+    at SqlEntityManag
+er.find (C:\PROJECTS\
+Novarsis\cloudsfit\my
+-medusa-store\node_mo
+dules\@mikro-orm\core
+\EntityManager.js:126
+:37)
+    at processTicksAn
+dRejections (node:int
+ernal/process/task_qu
+eues:105:5)
+    at async MikroOrm
+AbstractBaseRepositor
+y_.find (C:\PROJECTS\
+Novarsis\cloudsfit\my
+-medusa-store\node_mo
+dules\@medusajs\utils
+\src\dal\mikro-orm\mi
+kro-orm-repository.ts
+:480:15)
+    at async Abstract
+Service_.list (C:\PRO
+JECTS\Novarsis\clouds
+fit\my-medusa-store\n
+ode_modules\@medusajs
+\utils\src\modules-sd
+k\medusa-internal-ser
+vice.ts:233:14)
+    at async SalesCha
+nnelModuleService.met
+hodImplementation (C:
+\PROJECTS\Novarsis\cl
+oudsfit\my-medusa-sto
+re\node_modules\@medu
+sajs\utils\src\module
+s-sdk\medusa-service.
+ts:225:26)
+    at async SalesCha
+nnelModuleService.des
+criptor.value (C:\PRO
+JECTS\Novarsis\clouds
+fit\my-medusa-store\n
+ode_modules\@medusajs
+\utils\src\modules-sd
+k\decorators\inject-i
+nto-context.ts:27:14)
+    at async SalesCha
+nnelModuleService.des
+criptor.value (C:\PRO
+JECTS\Novarsis\clouds
+fit\my-medusa-store\n
+ode_modules\@medusajs
+\utils\src\modules-sd
+k\decorators\emit-eve
+nts.ts:26:22)
+    at async RemoteQu
+ery.executeFetchReque
+st (C:\PROJECTS\Novar
+sis\cloudsfit\my-medu
+sa-store\node_modules
+\@medusajs\modules-sd
+k\src\remote-query\re
+mote-query.ts:427:16)
+[32minfo[39m:    Finished executing script.

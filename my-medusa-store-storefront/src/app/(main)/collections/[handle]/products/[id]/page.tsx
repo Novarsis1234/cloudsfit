@@ -1,15 +1,23 @@
-"use client";
 
-import { useParams } from "next/navigation";
 import ProductDetail from "@/components/ProductDetail";
-import { getProductById } from "@/lib/productsData";
+import { getProductById } from "@/lib/medusa/get-product-by-id";
+import { getProducts } from "@/lib/medusa/get-products";
+import { retrieveCustomer } from "@/lib/data/customer";
+import { notFound } from "next/navigation";
 
-export default function ProductPage() {
-  const params = useParams();
-  const collectionHandle = params.handle as string;
-  const productId = parseInt(params.id as string);
+type Props = {
+  params: Promise<{ handle: string; id: string }>
+}
 
-  const product = getProductById(collectionHandle, productId);
+export default async function ProductPage({ params }: Props) {
+  const { handle: collectionHandle, id: productId } = await params;
+
+  // Parallel fetch for product and related products
+  const [product, relatedProducts, customer] = await Promise.all([
+    getProductById(productId),
+    getProducts(collectionHandle),
+    retrieveCustomer().catch(() => null)
+  ]);
 
   if (!product) {
     return (
@@ -25,6 +33,11 @@ export default function ProductPage() {
   }
 
   return (
-    <ProductDetail product={product} collectionHandle={collectionHandle} />
+    <ProductDetail
+      product={product}
+      collectionHandle={collectionHandle}
+      relatedProducts={relatedProducts}
+      customer={customer}
+    />
   );
 }

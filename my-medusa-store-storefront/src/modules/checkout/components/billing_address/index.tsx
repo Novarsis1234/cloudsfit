@@ -1,6 +1,7 @@
-﻿import { HttpTypes } from "@medusajs/types"
-import Input from "@/modules/common/components/input"
+import { HttpTypes } from "@medusajs/types"
+import Input from "@modules/common/components/input"
 import React, { useState } from "react"
+import CountrySelect from "../country-select"
 
 const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
   const [formData, setFormData] = useState<any>({
@@ -10,7 +11,7 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
     "billing_address.company": cart?.billing_address?.company || "",
     "billing_address.postal_code": cart?.billing_address?.postal_code || "",
     "billing_address.city": cart?.billing_address?.city || "",
-    "billing_address.country_code": cart?.billing_address?.country_code || "in",
+    "billing_address.country_code": cart?.billing_address?.country_code || "",
     "billing_address.province": cart?.billing_address?.province || "",
     "billing_address.phone": cart?.billing_address?.phone || "",
   })
@@ -80,11 +81,14 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
           value={formData["billing_address.city"]}
           onChange={handleChange}
         />
-        {/* India-only store: Country is automatically set to India (IN) */}
-        <input
-          type="hidden"
+        <CountrySelect
           name="billing_address.country_code"
-          value="in"
+          autoComplete="country"
+          region={cart?.region}
+          value={formData["billing_address.country_code"]}
+          onChange={handleChange}
+          required
+          data-testid="billing-country-select"
         />
         <Input
           label="State / Province"
@@ -108,4 +112,3 @@ const BillingAddress = ({ cart }: { cart: HttpTypes.StoreCart | null }) => {
 }
 
 export default BillingAddress
-

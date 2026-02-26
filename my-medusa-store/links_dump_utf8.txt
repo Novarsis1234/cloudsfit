@@ -1,0 +1,89 @@
+﻿node.exe : Error: 
+EPERM: operation not 
+permitted, rename 'C:
+\Users\Admin\.config\
+medusa\config.json.33
+125114' -> 'C:\Users\
+Admin\.config\medusa\
+config.json'
+At C:\Program Files\n
+odejs\npx.ps1:29 
+char:3
++   & $NODE_EXE 
+$NPX_CLI_JS $args
++   ~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~
+    + CategoryInfo   
+           : NotSpe  
+  cified: (Error:    
+ EPERM: o...sa\co    
+nfig.json':Strin    
+g) [], RemoteExc    
+eption
+    + FullyQualified 
+   ErrorId : Native  
+  CommandError
+ 
+    at 
+Object.renameSync 
+(node:fs:1021:11)
+    at Function.write
+FileSync [as sync] (C
+:\PROJECTS\Novarsis\c
+loudsfit\my-medusa-st
+ore\node_modules\writ
+e-file-atomic\index.j
+s:244:8)
+    at 
+Configstore.set all 
+[as all] (C:\PROJECTS
+\Novarsis\cloudsfit\m
+y-medusa-store\node_m
+odules\configstore\in
+dex.js:61:20)
+    at new 
+Configstore (C:\PROJE
+CTS\Novarsis\cloudsfi
+t\my-medusa-store\nod
+e_modules\configstore
+\index.js:25:13)
+    at 
+Object.<anonymous> (C
+:\PROJECTS\Novarsis\c
+loudsfit\my-medusa-st
+ore\node_modules\@med
+usajs\cli\src\util\pa
+ckage-manager.ts:5:16
+)
+    at 
+Module._compile (node
+:internal/modules/cjs
+/loader:1562:14)
+    at node:internal/
+modules/cjs/loader:16
+99:10
+    at Object.require
+.extensions.<computed
+> [as .js] (C:\PROJEC
+TS\Novarsis\cloudsfit
+\my-medusa-store\node
+_modules\ts-node\src\
+index.ts:1608:43)
+    at Module.load (n
+ode:internal/modules/
+cjs/loader:1313:32)
+    at 
+Function._load (node:
+internal/modules/cjs/
+loader:1123:12) {
+  errno: -4048,
+  code: 'EPERM',
+  syscall: 'rename',
+  path: 'C:\\Users\\A
+dmin\\.config\\medusa
+\\config.json.3312511
+4',
+  dest: 'C:\\Users\\A
+dmin\\.config\\medusa
+\\config.json'
+}

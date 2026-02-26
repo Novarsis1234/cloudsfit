@@ -28,6 +28,12 @@ export default async function ProductPreview({
     product,
   })
 
+  // Extract unique sizes and colors from product options
+  const sizeOption = product.options?.find((opt) => opt.title.toLowerCase() === "size")
+  const colorOption = product.options?.find((opt) => opt.title.toLowerCase() === "color")
+  const sizes = sizeOption?.values?.map((v) => v.value || v) || []
+  const colors = colorOption?.values?.map((v) => v.value || v) || []
+
   return (
     <LocalizedClientLink href={`/products/${product.handle}`} className="group block h-full">
       <div data-testid="product-wrapper" className="h-full flex flex-col">
@@ -47,6 +53,16 @@ export default async function ProductPreview({
           <div className="flex items-center gap-x-3 mt-3">
             {cheapestPrice && <PreviewPrice price={cheapestPrice} />}
           </div>
+          {sizes.length > 0 && (
+            <div className="mt-2 text-xs text-white/70">
+              Sizes: {sizes.join(", ")}
+            </div>
+          )}
+          {colors.length > 0 && (
+            <div className="mt-1 text-xs text-white/70">
+              Colors: {colors.join(", ")}
+            </div>
+          )}
         </div>
       </div>
     </LocalizedClientLink>

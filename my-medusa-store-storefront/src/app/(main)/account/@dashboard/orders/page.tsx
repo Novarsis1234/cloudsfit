@@ -3,8 +3,6 @@
 import OrderOverview from "@/modules/account/components/order-overview"
 import { notFound } from "next/navigation"
 import { listOrders } from "@/lib/data/orders"
-import Divider from "@/modules/common/components/divider"
-import TransferRequestForm from "@/modules/account/components/transfer-request-form"
 
 export const metadata: Metadata = {
   title: "Orders",
@@ -19,20 +17,17 @@ export default async function Orders() {
   }
 
   return (
-    <div className="w-full" data-testid="orders-page-wrapper">
-      <div className="mb-8 flex flex-col gap-y-4">
-        <h1 className="text-2xl-semi">Orders</h1>
-        <p className="text-base-regular">
-          View your previous orders and their status. You can also create
-          returns or exchanges for your orders if needed.
+    <div className="w-full flex flex-col gap-y-8" data-testid="orders-page-wrapper">
+      {/* Header */}
+      <div className="flex flex-col gap-y-1">
+        <h1 className="text-3xl font-black uppercase tracking-tighter text-white">Orders</h1>
+        <p className="text-white/40 text-sm">
+          Your full order history. View details, track shipments, or request returns.
         </p>
       </div>
-      <div>
-        <OrderOverview orders={orders} />
-        <Divider className="my-16" />
-        <TransferRequestForm />
-      </div>
+
+      {/* Orders List */}
+      <OrderOverview orders={orders} />
     </div>
   )
 }
-

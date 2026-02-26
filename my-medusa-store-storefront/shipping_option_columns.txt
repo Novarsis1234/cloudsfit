@@ -1,0 +1,12 @@
+id: text
+name: text
+price_type: text
+service_zone_id: text
+shipping_profile_id: text
+provider_id: text
+data: jsonb
+metadata: jsonb
+shipping_option_type_id: text
+created_at: timestamp with time zone
+updated_at: timestamp with time zone
+deleted_at: timestamp with time zone

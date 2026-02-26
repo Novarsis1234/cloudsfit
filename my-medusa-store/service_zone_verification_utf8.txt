@@ -1,0 +1,37 @@
+﻿[32minfo[39m:    redisUrl not found. A fake redis instance will be used.
+[32minfo[39m:    Executing script at ./src/scripts/verify-service-zone.ts...
+[32minfo[39m:    redisUrl not found. A fake redis instance will be used.
+[32minfo[39m:    No link to load from C:\PROJECTS\Novarsis\cloudsfit\my-medusa-store\node_modules\@medusajs\draft-order\.medusa\server\src\links. skipped.
+[33mwarn[39m:    Local Event Bus installed. This is not recommended for production.
+[32minfo[39m:    Locking module: Using "in-memory" as default.
+[32minfo[39m:    No workflow to load from C:\PROJECTS\Novarsis\cloudsfit\my-medusa-store\node_modules\@medusajs\draft-order\.medusa\server\src\workflows. skipped.
+[32minfo[39m:    No subscriber to load from C:\PROJECTS\Novarsis\cloudsfit\my-medusa-store\node_modules\@medusajs\draft-order\.medusa\server\src\subscribers. skipped.
+--- SERVICE ZONE CHECK ---
+{
+  "id": "serzo_01KHZERCDM8C8JYRT7ES2DGQ01",
+  "name": "India Shipping Zone",
+  "fulfillment_set_id": "fs_92fmz",
+  "fulfillment_set": {
+    "id": "fs_92fmz"
+  },
+  "metadata": null,
+  "created_at": "2026-02-21T06:38:54.389Z",
+  "updated_at": "2026-02-21T06:38:54.389Z",
+  "deleted_at": null,
+  "geo_zones": [
+    {
+      "id": "fgz_01KHZM72Y03ZWGS6KQ5TZW8WD3",
+      "type": "country",
+      "country_code": "in",
+      "province_code": null,
+      "city": null,
+      "postal_expression": null,
+      "service_zone_id": "serzo_01KHZERCDM8C8JYRT7ES2DGQ01",
+      "metadata": null,
+      "created_at": "2026-02-21T08:14:19.073Z",
+      "updated_at": "2026-02-21T08:14:19.073Z",
+      "deleted_at": null
+    }
+  ]
+}
+[32minfo[39m:    Finished executing script.

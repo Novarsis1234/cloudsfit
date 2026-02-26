@@ -1,0 +1,26 @@
+[
+  {
+    "product_id": "prod_01KHRA180B77TB8CQWAHZSHA52",
+    "sales_channel_id": "sc_01KHR8AW04HPG3B2X67YKMMVV4",
+    "id": "prodsc_01KHRA18BDPY4JGF57FVWD3Z85",
+    "created_at": "2026-02-18T12:01:41.211Z",
+    "updated_at": "2026-02-18T12:10:20.998Z",
+    "deleted_at": "2026-02-18T12:10:20.997Z"
+  },
+  {
+    "product_id": "prod_01KHRAKYEWT0MKM652SK4MF2PF",
+    "sales_channel_id": "sc_01KHR8AW04HPG3B2X67YKMMVV4",
+    "id": "prodsc_01KHRAKYQ6M4Y03C87NMAC69TP",
+    "created_at": "2026-02-18T12:11:53.942Z",
+    "updated_at": "2026-02-18T12:11:53.942Z",
+    "deleted_at": null
+  },
+  {
+    "product_id": "prod_01KHTA4SMN7N9Y4633VKWMCWRM",
+    "sales_channel_id": "sc_01KHR8AW04HPG3B2X67YKMMVV4",
+    "id": "prodsc_01KHTA4SVVD7ZS13C4P0GC6XYK",
+    "created_at": "2026-02-19T06:42:06.328Z",
+    "updated_at": "2026-02-19T06:42:06.328Z",
+    "deleted_at": null
+  }
+]

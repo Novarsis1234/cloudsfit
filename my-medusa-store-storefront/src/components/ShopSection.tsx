@@ -1,33 +1,25 @@
 import React from "react";
 import Link from "next/link";
-
-type Product = {
-  id: number;
-  name: string;
-  price: string;
-  image: string;
-  rating?: number;
-};
+import ProductCard from "./ProductCard";
+import { MedusaProduct } from "@/lib/medusa/mappers";
 
 type Props = {
   title: string;
   subtitle?: string;
-  products?: Product[];
-  images?: string[];
+  products?: MedusaProduct[];
   collectionHandle?: string;
   viewAllLink?: string;
 };
 
-export default function ShopSection({ 
-  title, 
-  subtitle, 
-  products,
-  images,
+export default function ShopSection({
+  title,
+  subtitle,
+  products = [],
   collectionHandle,
-  viewAllLink 
+  viewAllLink
 }: Props) {
-  // Use products if provided, otherwise fall back to images array
-  const displayData = products || images || [];
+  // User requested limit: only 1 row of 4 cards, others in View All
+  const displayProducts = products.slice(0, 4);
 
   return (
     <section className="py-10">
@@ -38,60 +30,30 @@ export default function ShopSection({
             {subtitle && <p className="text-sm text-gray-400 mt-2">{subtitle}</p>}
           </div>
           <div>
-            {viewAllLink ? (
-              <Link href={viewAllLink} className="text-sm text-purple-500 hover:underline">
+            {viewAllLink && (
+              <Link href={viewAllLink} className="text-sm text-purple-500 hover:text-purple-400 font-bold transition-colors">
                 View All →
               </Link>
-            ) : (
-              <a href="/shop" className="text-sm text-purple-500 hover:underline">
-                View All →
-              </a>
             )}
           </div>
         </div>
 
-        <div className="border-t border-gray-800 pt-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {displayData.map((item: any, idx: number) => {
-              // Check if item is a product or just an image URL string
-              const isProduct = typeof item === 'object' && 'id' in item;
-              const href = isProduct && collectionHandle 
-                ? `/collections/${collectionHandle}/products/${item.id}`
-                : '#';
-              const imageUrl = isProduct ? item.image : item;
-              const productName = isProduct ? item.name : `${title} ${idx + 1}`;
-              const productPrice = isProduct ? item.price : '₹999';
-
-              return (
-                <Link 
-                  key={idx}
-                  href={href}
-                  className="group cursor-pointer"
-                >
-                  <div className="bg-[#0f0f12] rounded-lg overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-200">
-                    <div className="h-96 bg-gray-900 flex items-center justify-center overflow-hidden">
-                      <img 
-                        src={imageUrl} 
-                        alt={productName}
-                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-200" 
-                      />
-                    </div>
-                    <div className="p-4 bg-[#0b0b0d]">
-                      <h3 className="text-sm md:text-base font-semibold text-gray-100 uppercase line-clamp-2 group-hover:text-purple-400 transition-colors">
-                        {productName}
-                      </h3>
-                      <div className="text-blue-400 mt-2 font-semibold">{productPrice}</div>
-                      {isProduct && item.rating && (
-                        <div className="text-xs text-yellow-500 mt-1">
-                          ★ {item.rating} ({item.reviews || 0} reviews)
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
+        <div className="border-t border-gray-800 pt-8">
+          {displayProducts.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {displayProducts.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  collectionHandle={collectionHandle}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="py-10 text-center text-gray-500">
+              No products found in {title}.
+            </div>
+          )}
         </div>
       </div>
     </section>

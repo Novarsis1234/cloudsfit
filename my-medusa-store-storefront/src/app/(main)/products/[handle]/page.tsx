@@ -1,7 +1,7 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { listProducts } from "@/lib/data/products"
-import { getRegion, listRegions } from "@/lib/data/regions"
+import { getRegion } from "@/lib/data/regions"
 import ProductTemplate from "@/modules/products/templates"
 import { HttpTypes } from "@medusajs/types"
 
@@ -46,8 +46,46 @@ function getImagesForVariant(
     return product.images || []
   }
 
-  const imageIdsMap = new Map(variant.images.map((i) => [i.id, true]))
-  return (product.images || []).filter((i) => imageIdsMap.has(i.id))
+  const imageIds = new Set(
+    variant.images
+      .map((image) => image.id)
+      .filter((id): id is string => Boolean(id))
+  )
+  const imageUrls = new Set(
+    variant.images
+      .map((image) => image.url)
+      .filter((url): url is string => Boolean(url))
+  )
+
+  const filteredImages = (product.images || []).filter(
+    (image) =>
+      (image.id && imageIds.has(image.id)) ||
+      (image.url && imageUrls.has(image.url))
+  )
+
+  if (filteredImages.length) {
+    return filteredImages
+  }
+
+  if (imageUrls.size) {
+    return Array.from(imageUrls).map((url, index) => ({
+      id: `variant-url-${index}`,
+      url,
+      rank: index,
+    })) as HttpTypes.StoreProductImage[]
+  }
+
+  if (variant.thumbnail) {
+    return [
+      {
+        id: "variant-thumb",
+        url: variant.thumbnail,
+        rank: 0,
+      },
+    ] as HttpTypes.StoreProductImage[]
+  }
+
+  return product.images || []
 }
 
 export async function generateMetadata(props: Props): Promise<Metadata> {
@@ -102,6 +140,9 @@ export default async function ProductPage(props: Props) {
   }
 
   const images = getImagesForVariant(pricedProduct, selectedVariantId)
+  const selectedVariant = pricedProduct.variants?.find(
+    (variant) => variant.id === selectedVariantId
+  )
 
   return (
     <ProductTemplate
@@ -109,6 +150,7 @@ export default async function ProductPage(props: Props) {
       region={region}
       countryCode={countryCode}
       images={images}
+      selectedVariant={selectedVariant}
     />
   )
 }

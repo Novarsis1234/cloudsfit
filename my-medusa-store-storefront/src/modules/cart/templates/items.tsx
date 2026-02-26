@@ -4,6 +4,7 @@ import { Heading, Table } from "@medusajs/ui"
 
 import Item from "@/modules/cart/components/item"
 import SkeletonLineItem from "@/modules/skeletons/components/skeleton-line-item"
+import LocalizedClientLink from "@/modules/common/components/localized-client-link"
 
 type ItemsTemplateProps = {
   cart?: HttpTypes.StoreCart
@@ -12,44 +13,36 @@ type ItemsTemplateProps = {
 const ItemsTemplate = ({ cart }: ItemsTemplateProps) => {
   const items = cart?.items
   return (
-    <div>
-      <div className="pb-3 flex items-center">
-        <Heading className="text-[2rem] leading-[2.75rem]">Cart</Heading>
+    <div className="flex flex-col gap-y-10">
+      <div className="flex items-center gap-x-4">
+        <LocalizedClientLink href="/store" className="text-white hover:text-cloudsfit-blue transition-colors">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7" />
+          </svg>
+        </LocalizedClientLink>
+        <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-white">
+          Shopping Cart ({items?.length || 0} {items?.length === 1 ? 'Item' : 'Items'})
+        </h1>
       </div>
-      <Table>
-        <Table.Header className="border-t-0">
-          <Table.Row className="text-ui-fg-subtle txt-medium-plus">
-            <Table.HeaderCell className="!pl-0">Item</Table.HeaderCell>
-            <Table.HeaderCell></Table.HeaderCell>
-            <Table.HeaderCell>Quantity</Table.HeaderCell>
-            <Table.HeaderCell className="hidden small:table-cell">
-              Price
-            </Table.HeaderCell>
-            <Table.HeaderCell className="!pr-0 text-right">
-              Total
-            </Table.HeaderCell>
-          </Table.Row>
-        </Table.Header>
-        <Table.Body>
-          {items
-            ? items
-                .sort((a, b) => {
-                  return (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
-                })
-                .map((item) => {
-                  return (
-                    <Item
-                      key={item.id}
-                      item={item}
-                      currencyCode={cart?.currency_code}
-                    />
-                  )
-                })
-            : repeat(5).map((i) => {
-                return <SkeletonLineItem key={i} />
-              })}
-        </Table.Body>
-      </Table>
+      <div className="grid grid-cols-1 gap-6">
+        {items
+          ? items
+            .sort((a, b) => {
+              return (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
+            })
+            .map((item) => {
+              return (
+                <Item
+                  key={item.id}
+                  item={item}
+                  currencyCode={cart?.currency_code || "INR"}
+                />
+              )
+            })
+          : repeat(5).map((i) => {
+            return <SkeletonLineItem key={i} />
+          })}
+      </div>
     </div>
   )
 }

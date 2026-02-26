@@ -1,10 +1,10 @@
-﻿import { Listbox, Transition } from "@headlessui/react"
+import { Listbox, Transition } from "@headlessui/react"
 import { ChevronUpDown } from "@medusajs/icons"
 import { clx } from "@medusajs/ui"
 import { Fragment, useMemo } from "react"
 
-import Radio from "@/modules/common/components/radio"
-import compareAddresses from "@/lib/util/compare-addresses"
+import Radio from "@modules/common/components/radio"
+import compareAddresses from "@lib/util/compare-addresses"
 import { HttpTypes } from "@medusajs/types"
 
 type AddressSelectProps = {
@@ -33,7 +33,7 @@ const AddressSelect = ({
   }, [addresses, addressInput])
 
   return (
-    <Listbox onChange={handleSelect} value={selectedAddress?.id}>
+    <Listbox onChange={handleSelect} value={selectedAddress?.id || ""}>
       <div className="relative">
         <Listbox.Button
           className="relative w-full flex justify-between items-center px-4 py-[10px] text-left bg-white cursor-default focus:outline-none border rounded-rounded focus-visible:ring-2 focus-visible:ring-opacity-75 focus-visible:ring-white focus-visible:ring-offset-gray-300 focus-visible:ring-offset-2 focus-visible:border-gray-300 text-base-regular"
@@ -114,4 +114,3 @@ const AddressSelect = ({
 }
 
 export default AddressSelect
-

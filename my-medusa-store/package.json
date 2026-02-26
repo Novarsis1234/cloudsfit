@@ -23,9 +23,11 @@
   },
   "dependencies": {
     "@medusajs/admin-sdk": "2.13.1",
+    "@medusajs/auth-google": "^2.13.1",
     "@medusajs/cli": "2.13.1",
     "@medusajs/framework": "2.13.1",
-    "@medusajs/medusa": "2.13.1"
+    "@medusajs/medusa": "2.13.1",
+    "@sgftech/payment-razorpay": "^2.1.11"
   },
   "devDependencies": {
     "@medusajs/test-utils": "2.13.1",

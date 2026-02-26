@@ -1,15 +1,15 @@
-﻿"use client"
+"use client"
 
 import { Radio, RadioGroup } from "@headlessui/react"
-import { setShippingMethod } from "@/lib/data/cart"
-import { calculatePriceForShippingOption } from "@/lib/data/fulfillment"
-import { convertToLocale } from "@/lib/util/money"
+import { setShippingMethod } from "@lib/data/cart"
+import { calculatePriceForShippingOption } from "@lib/data/fulfillment"
+import { convertToLocale } from "@lib/util/money"
 import { CheckCircleSolid, Loader } from "@medusajs/icons"
 import { HttpTypes } from "@medusajs/types"
 import { Button, clx, Heading, Text } from "@medusajs/ui"
-import ErrorMessage from "@/modules/checkout/components/error-message"
-import Divider from "@/modules/common/components/divider"
-import MedusaRadio from "@/modules/common/components/radio"
+import ErrorMessage from "@modules/checkout/components/error-message"
+import Divider from "@modules/common/components/divider"
+import MedusaRadio from "@modules/common/components/radio"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useState } from "react"
 
@@ -71,7 +71,8 @@ const Shipping: React.FC<ShippingProps> = ({
   const isOpen = searchParams.get("step") === "delivery"
 
   const _shippingMethods = availableShippingMethods?.filter(
-    (sm) => sm.service_zone?.fulfillment_set?.type !== "pickup"
+    (sm) => 
+      sm.service_zone?.fulfillment_set?.type !== "pickup"
   )
 
   const _pickupMethods = availableShippingMethods?.filter(
@@ -119,6 +120,7 @@ const Shipping: React.FC<ShippingProps> = ({
     variant: "shipping" | "pickup"
   ) => {
     setError(null)
+    console.log("Selecting shipping method:", id, "variant:", variant)
 
     if (variant === "pickup") {
       setShowPickupOptions(PICKUP_OPTION_ON)
@@ -133,14 +135,21 @@ const Shipping: React.FC<ShippingProps> = ({
       return id
     })
 
+    console.log("Calling setShippingMethod server action...")
     await setShippingMethod({ cartId: cart.id, shippingMethodId: id })
+      .then(() => {
+        console.log("setShippingMethod server action SUCCESS")
+        router.refresh()
+      })
       .catch((err) => {
+        console.error("setShippingMethod server action ERROR:", err)
         setShippingMethodId(currentId)
 
         setError(err.message)
       })
       .finally(() => {
         setIsLoading(false)
+        console.log("Cart after selection completion:", JSON.stringify(cart.shipping_methods, null, 2))
       })
   }
 
@@ -240,6 +249,13 @@ const Shipping: React.FC<ShippingProps> = ({
                     }
                   }}
                 >
+                  {_shippingMethods?.length === 0 && (
+                    <div className="flex flex-col items-center justify-center px-4 py-8 text-ui-fg-base">
+                       <p>No shipping methods available for this address.</p>
+                       <p className="text-small-regular text-ui-fg-subtle mt-2">Please verify your address or contact support.</p>
+                       <p className="text-small-regular text-ui-fg-muted mt-4">Debug: {_shippingMethods?.length ?? 0} methods found.</p>
+                    </div>
+                  )}
                   {_shippingMethods?.map((option) => {
                     const isDisabled =
                       option.price_type === "calculated" &&
@@ -273,7 +289,7 @@ const Shipping: React.FC<ShippingProps> = ({
                         <span className="justify-self-end text-ui-fg-base">
                           {option.price_type === "flat" ? (
                             convertToLocale({
-                              amount: option.amount!,
+                              amount: option.amount ?? 0,
                               currency_code: cart?.currency_code,
                             })
                           ) : calculatedPricesMap[option.id] ? (
@@ -391,7 +407,7 @@ const Shipping: React.FC<ShippingProps> = ({
                 <Text className="txt-medium text-ui-fg-subtle">
                   {cart.shipping_methods!.at(-1)!.name}{" "}
                   {convertToLocale({
-                    amount: cart.shipping_methods!.at(-1)!.amount!,
+                    amount: cart.shipping_methods!.at(-1)!.amount ?? 0,
                     currency_code: cart?.currency_code,
                   })}
                 </Text>
@@ -406,4 +422,3 @@ const Shipping: React.FC<ShippingProps> = ({
 }
 
 export default Shipping
-

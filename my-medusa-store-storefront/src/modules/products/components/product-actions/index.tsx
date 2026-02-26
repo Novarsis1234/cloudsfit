@@ -40,13 +40,19 @@ export default function ProductActions({
   const [isAdding, setIsAdding] = useState(false)
   const countryCode = useParams().countryCode as string
 
-  // If there is only 1 variant, preselect the options
+  // Preselect first variant options on first load so selectedVariant is always resolvable.
   useEffect(() => {
-    if (product.variants?.length === 1) {
-      const variantOptions = optionsAsKeymap(product.variants[0].options)
-      setOptions(variantOptions ?? {})
+    if (!product.variants?.length) {
+      return
     }
-  }, [product.variants])
+
+    if (Object.keys(options).length > 0) {
+      return
+    }
+
+    const variantOptions = optionsAsKeymap(product.variants[0].options)
+    setOptions(variantOptions ?? {})
+  }, [product.variants, options])
 
   const selectedVariant = useMemo(() => {
     if (!product.variants || product.variants.length === 0) {

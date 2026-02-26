@@ -4,6 +4,7 @@ import { CreditCard } from "@medusajs/icons"
 import Ideal from "@/modules/common/icons/ideal"
 import Bancontact from "@/modules/common/icons/bancontact"
 import PayPal from "@/modules/common/icons/paypal"
+import Razorpay from "@/modules/common/icons/razorpay"
 
 /* Map of payment provider_id to their title and icon. Add in any payment providers you want to use. */
 export const paymentInfoMap: Record<
@@ -30,11 +31,19 @@ export const paymentInfoMap: Record<
     title: "PayPal",
     icon: <PayPal />,
   },
+  pp_razorpay_razorpay: {
+    title: "Razorpay",
+    icon: <Razorpay />,
+  },
   pp_system_default: {
     title: "Manual Payment",
     icon: <CreditCard />,
   },
   // Add more payment providers here
+}
+
+export const isRazorpay = (providerId?: string) => {
+  return providerId === "pp_razorpay_razorpay" || providerId === "razorpay"
 }
 
 // This only checks if it is native stripe or medusa payments for card payments, it ignores the other stripe-based providers

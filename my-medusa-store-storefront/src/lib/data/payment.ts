@@ -15,19 +15,21 @@ export const listCartPaymentMethods = async (regionId: string) => {
 
   return sdk.client
     .fetch<HttpTypes.StorePaymentProviderListResponse>(
-      `/store/payment-providers`,
+      "/store/payment-providers",
       {
         method: "GET",
         query: { region_id: regionId },
         headers,
         next,
-        cache: "force-cache",
+        cache: "no-store",
       }
     )
     .then(({ payment_providers }) =>
-      payment_providers.sort((a, b) => {
-        return a.id > b.id ? 1 : -1
-      })
+      payment_providers
+        .filter((p): p is HttpTypes.StorePaymentProvider => !!p)
+        .sort((a, b) => {
+          return a.id > b.id ? 1 : -1
+        })
     )
     .catch(() => {
       return null

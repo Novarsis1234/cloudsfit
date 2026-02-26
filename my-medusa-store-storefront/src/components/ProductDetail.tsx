@@ -1,74 +1,214 @@
 "use client";
 
-import { useState } from "react";
-import { Heart, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Heart, ChevronLeft, ChevronRight } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { getProductsByCollection } from "@/lib/productsData";
 import { useCart } from "@/lib/context/cart-context";
 import { useWishlist } from "@/lib/context/wishlist-context";
 import { Toaster, toast } from "sonner";
+import { addToCart as addToMedusaCart, syncCart } from "@/lib/data/cart";
+import { MedusaProduct } from "@/lib/medusa/mappers";
 
 interface ProductDetailProps {
-  product: any;
+  product: MedusaProduct;
   collectionHandle: string;
+  relatedProducts?: MedusaProduct[];
+  customer: any; // Type should be imported but using any for now to avoid complexity, or import HttpTypes
 }
 
 export default function ProductDetail({
   product,
   collectionHandle,
+  relatedProducts = [],
+  customer,
 }: ProductDetailProps) {
   const router = useRouter();
   const { addItem } = useCart();
   const { addItem: addToWishlist, removeItem: removeFromWishlist, inWishlist } = useWishlist();
-  
+
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [selectedSize, setSelectedSize] = useState("M");
-  const [selectedColor, setSelectedColor] = useState(product.colors[0]);
+  const [selectedSize, setSelectedSize] = useState(product.sizes[0] || "M");
+  const [selectedColor, setSelectedColor] = useState(product.colors[0] || "Black");
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState("description");
   const [isWishlisted, setIsWishlisted] = useState(inWishlist(String(product.id)));
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(product.image);
+
+  const normalizedSelectedColor = selectedColor.trim().toLowerCase();
+
+  // Find current variant based on selections
+  const currentVariant = product.variants?.find(
+    (v) =>
+      v.size?.trim().toLowerCase() === selectedSize.trim().toLowerCase() &&
+      v.color?.trim().toLowerCase() === normalizedSelectedColor
+  ) || product.variants?.[0];
+
+  const variantImages = useMemo(() => {
+    const uniqueUrls = (urls: string[]) =>
+      Array.from(new Set(urls.filter((url) => Boolean(url))));
+
+    const colorVariantUrls = uniqueUrls(
+      (product.variants || [])
+        .filter(
+          (variant) =>
+            variant.color?.trim().toLowerCase() === normalizedSelectedColor
+        )
+        .flatMap((variant) => [
+          ...(variant.images?.map((image) => image.url) || []),
+          ...(variant.mediaUrls || []),
+          variant.image || "",
+        ])
+    );
+
+    if (colorVariantUrls.length) {
+      return colorVariantUrls.map((url) => ({ url }));
+    }
+
+    const currentVariantUrls = uniqueUrls([
+      ...(currentVariant?.images?.map((image) => image.url) || []),
+      ...(currentVariant?.mediaUrls || []),
+      currentVariant?.image || "",
+    ]);
+
+    if (currentVariantUrls.length) {
+      return currentVariantUrls.map((url) => ({ url }));
+    }
+
+    const compactColor = normalizedSelectedColor.replace(/\s+/g, "");
+    const hyphenColor = normalizedSelectedColor.replace(/\s+/g, "-");
+    const productColorUrls = uniqueUrls(
+      (product.images || []).filter((url) => {
+        const lowerUrl = String(url).toLowerCase();
+        return lowerUrl.includes(compactColor) || lowerUrl.includes(hyphenColor);
+      })
+    );
+
+    if (productColorUrls.length) {
+      return productColorUrls.map((url) => ({ url }));
+    }
+
+    if (product.images?.length) {
+      return product.images.map((url) => ({ url }));
+    }
+
+    return [{ url: product.image }];
+  }, [currentVariant, normalizedSelectedColor, product.images, product.image, product.variants]);
+
+  useEffect(() => {
+    setCurrentImageIndex(0);
+  }, [normalizedSelectedColor, currentVariant?.id]);
+
+  useEffect(() => {
+    setSelectedImage(variantImages[currentImageIndex]?.url || product.image);
+  }, [currentImageIndex, variantImages, product.image]);
 
   const nextImage = () => {
-    setCurrentImageIndex((prev) => (prev + 1) % product.images.length);
+    setCurrentImageIndex((prev) => (prev + 1) % variantImages.length);
   };
 
   const prevImage = () => {
     setCurrentImageIndex((prev) =>
-      prev === 0 ? product.images.length - 1 : prev - 1
+      prev === 0 ? variantImages.length - 1 : prev - 1
     );
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
+    if (!customer) {
+      toast.error("Please sign in", {
+        description: "You need to be signed in to add items to cart",
+        action: {
+          label: "Sign In",
+          onClick: () => router.push("/account"),
+        },
+      });
+      return;
+    }
+
+    const variantId = currentVariant?.id || product.id;
+
     const cartItem = {
       id: product.id,
+      variantId: variantId,
       name: product.name,
-      price: product.price,
-      image: product.images[0],
+      description: product.description,
+      price: currentVariant?.price || product.price,
+      image: variantImages[0]?.url || product.images[0] || product.image,
       quantity,
-      color: selectedColor,
-      size: selectedSize,
+      color: currentVariant?.color || selectedColor,
+      size: currentVariant?.size || selectedSize,
     };
+
+    // 1. Update Local UI Cart
     addItem(cartItem);
-    toast.success("Added to cart", {
-      description: `${product.name} x${quantity} added to your cart 🛒`,
-    });
+
+    // 2. Sync with Medusa Backend
+    try {
+      const countryCode = "in" // Default to India
+      await addToMedusaCart({
+        variantId: variantId,
+        quantity: quantity,
+        countryCode,
+      })
+
+      toast.success("Added to cart", {
+        description: `${product.name} (${cartItem.color} | ${cartItem.size}) x${quantity} added 🛒`,
+      });
+    } catch (error) {
+      console.error("Failed to sync with Medusa:", error)
+      toast.success("Added to local cart");
+    }
+
     setTimeout(() => {
       router.push("/cart");
     }, 500);
   };
 
-  const handleBuyNow = () => {
+  const handleBuyNow = async () => {
+    if (!customer) {
+      toast.error("Please sign in", {
+        description: "You need to be signed in to buy items",
+        action: {
+          label: "Sign In",
+          onClick: () => router.push("/account"),
+        },
+      });
+      return;
+    }
+
+    const variantId = currentVariant?.id || product.id;
+
+    try {
+      const countryCode = "in";
+      // Replace cart with only Buy Now item so checkout summary is always correct.
+      await syncCart([{ variantId, quantity }], countryCode);
+    } catch (error) {
+      console.error("Failed to prepare Buy Now cart with Medusa:", error);
+      toast.error("Unable to prepare checkout", {
+        description: "Please try again.",
+      });
+      return;
+    }
+
     toast.success("Redirecting to checkout", {
-      description: `Processing your order for ${product.name}...`,
+      description: `Please add your address to continue for ${product.name}...`,
     });
-    setTimeout(() => {
-      handleAddToCart();
-    }, 500);
+
+    router.push("/checkout?step=address&buy_now=1");
   };
 
   const handleToggleWishlist = () => {
+    if (!customer) {
+      toast.error("Please sign in", {
+        description: "You need to be signed in to use wishlist",
+        action: {
+          label: "Sign In",
+          onClick: () => router.push("/account"),
+        },
+      });
+      return;
+    }
     if (isWishlisted) {
       removeFromWishlist(String(product.id));
       setIsWishlisted(false);
@@ -76,7 +216,7 @@ export default function ProductDetail({
         description: `${product.name} removed from your wishlist`,
       });
     } else {
-      addToWishlist(product);
+      addToWishlist(product as any);
       setIsWishlisted(true);
       toast.success("Added to wishlist", {
         description: `${product.name} saved to your wishlist ❤️`,
@@ -149,11 +289,11 @@ export default function ProductDetail({
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-12 mb-12 sm:mb-16">
           {/* Product Images - Left */}
-          <div className="flex flex-col gap-3 sm:gap-4 order-2 lg:order-1">
+          <div className="flex flex-col gap-3 sm:gap-4 order-1 lg:order-1">
             {/* Main Image */}
             <div className="relative aspect-square bg-neutral-800 rounded-lg overflow-hidden">
               <img
-                src={product.images[currentImageIndex]}
+                src={selectedImage}
                 alt={product.name}
                 className="w-full h-full object-cover"
               />
@@ -175,37 +315,35 @@ export default function ProductDetail({
               </button>
 
               {/* Wishlist Button */}
-              <button 
+              <button
                 onClick={handleToggleWishlist}
-                className={`absolute top-4 right-4 rounded-full p-2 sm:p-3 transition ${
-                  isWishlisted 
-                    ? "bg-red-500/80 hover:bg-red-600" 
-                    : "bg-neutral-700 hover:bg-neutral-600"
-                }`}
+                className={`absolute top-4 right-4 rounded-full p-2 sm:p-3 transition ${isWishlisted
+                  ? "bg-red-500/80 hover:bg-red-600"
+                  : "bg-neutral-700 hover:bg-neutral-600"
+                  }`}
               >
                 <Heart size={18} className={`sm:w-5 sm:h-5 ${isWishlisted ? "fill-white" : ""}`} />
               </button>
 
               {/* Image Counter */}
               <div className="absolute bottom-4 right-4 bg-neutral-800/90 px-3 py-1 rounded text-xs">
-                {currentImageIndex + 1} / {product.images.length}
+                {currentImageIndex + 1} / {variantImages.length}
               </div>
             </div>
 
             {/* Thumbnail Images - Scrollable */}
             <div className="flex gap-2 overflow-x-auto pb-2">
-              {product.images.map((img: string, idx: number) => (
+              {variantImages.map((img, idx: number) => (
                 <button
                   key={idx}
                   onClick={() => setCurrentImageIndex(idx)}
-                  className={`min-w-[60px] sm:min-w-[80px] h-[60px] sm:h-[80px] rounded border-2 overflow-hidden transition flex-shrink-0 ${
-                    currentImageIndex === idx
-                      ? "border-cloudsfit-purple"
-                      : "border-neutral-700 hover:border-neutral-600"
-                  }`}
+                  className={`relative min-w-[60px] sm:min-w-[80px] h-[60px] sm:h-[80px] rounded border-2 overflow-hidden transition flex-shrink-0 ${currentImageIndex === idx
+                    ? "border-cloudsfit-purple"
+                    : "border-neutral-700 hover:border-neutral-600"
+                    }`}
                 >
                   <img
-                    src={img}
+                    src={img.url}
                     alt={`Thumbnail ${idx + 1}`}
                     className="w-full h-full object-cover"
                   />
@@ -215,7 +353,7 @@ export default function ProductDetail({
           </div>
 
           {/* Product Details - Right */}
-          <div className="flex flex-col gap-4 sm:gap-6 order-1 lg:order-2">
+          <div className="flex flex-col gap-4 sm:gap-6 order-2 lg:order-2">
             {/* Badges */}
             <div className="flex gap-2 flex-wrap">
               {product.badges.map((badge: string) => (
@@ -234,7 +372,9 @@ export default function ProductDetail({
             </h1>
 
             {/* Subtitle */}
-            <p className="text-gray-400 text-sm sm:text-base lg:text-lg">{product.description}</p>
+            <p className="text-gray-400 text-sm sm:text-base lg:text-lg">
+              {product.subtitle || product.description}
+            </p>
 
             {/* Rating */}
             <div className="flex items-center gap-3 text-sm sm:text-base">
@@ -259,22 +399,17 @@ export default function ProductDetail({
 
             {/* Price */}
             <div className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-extrabold text-cloudsfit-blue">
-              {product.price}
+              {currentVariant?.price || product.price}
             </div>
 
-            {/* Quick Highlights */}
+            {/* Product Description (from backend) */}
             <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-3 sm:p-4">
               <h3 className="text-cloudsfit-purple font-bold mb-3 uppercase text-xs sm:text-sm">
-                Quick Highlights
+                Product Description
               </h3>
-              <ul className="space-y-1 sm:space-y-2">
-                {product.highlights.map((highlight: string) => (
-                  <li key={highlight} className="flex items-center gap-2 text-xs sm:text-sm">
-                    <span className="text-cloudsfit-purple flex-shrink-0">✓</span>
-                    <span>{highlight}</span>
-                  </li>
-                ))}
-              </ul>
+              <p className="text-xs sm:text-sm text-gray-200 whitespace-pre-line leading-6">
+                {product.description || "No description available."}
+              </p>
             </div>
 
             {/* Color Selection */}
@@ -287,30 +422,16 @@ export default function ProductDetail({
                   <button
                     key={color}
                     onClick={() => setSelectedColor(color)}
-                    className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full border-2 transition flex-shrink-0 ${
-                      selectedColor === color
-                        ? "border-cloudsfit-purple"
-                        : "border-neutral-700"
-                    }`}
+                    className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full border-2 transition flex-shrink-0 ${selectedColor === color
+                      ? "border-cloudsfit-purple"
+                      : "border-neutral-700"
+                      }`}
                     title={color}
                   >
                     <div
-                      className="w-full h-full rounded-full"
+                      className="w-full h-full rounded-full border border-neutral-700"
                       style={{
-                        backgroundColor:
-                          color === "Black"
-                            ? "#000"
-                            : color === "White"
-                            ? "#fff"
-                            : color === "Navy"
-                            ? "#001f3f"
-                            : color === "Gray"
-                            ? "#808080"
-                            : color === "Purple"
-                            ? "#9d4edd"
-                            : color === "Blue"
-                            ? "#0096ff"
-                            : "#666",
+                        backgroundColor: color.toLowerCase(),
                       }}
                     />
                   </button>
@@ -328,11 +449,10 @@ export default function ProductDetail({
                   <button
                     key={size}
                     onClick={() => setSelectedSize(size)}
-                    className={`py-2 sm:py-3 font-bold border-2 rounded text-xs sm:text-sm transition ${
-                      selectedSize === size
-                        ? "border-cloudsfit-purple bg-cloudsfit-purple/20"
-                        : "border-neutral-700 hover:border-cloudsfit-purple"
-                    }`}
+                    className={`py-2 sm:py-3 font-bold border-2 rounded text-xs sm:text-sm transition ${selectedSize === size
+                      ? "border-cloudsfit-purple bg-cloudsfit-purple/20"
+                      : "border-neutral-700 hover:border-cloudsfit-purple"
+                      }`}
                   >
                     {size}
                   </button>
@@ -364,20 +484,20 @@ export default function ProductDetail({
 
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
-              <button 
+              <button
                 onClick={handleAddToCart}
                 className="flex-1 bg-gradient-to-r from-cloudsfit-purple to-cloudsfit-blue py-2 sm:py-3 font-bold uppercase rounded-lg hover:opacity-90 transition text-xs sm:text-sm md:text-base"
               >
                 🛒 Add to Cart
               </button>
-              <button 
+              <button
                 onClick={handleBuyNow}
                 className="flex-1 border-2 border-orange-500 text-orange-500 py-2 sm:py-3 font-bold uppercase rounded-lg hover:bg-orange-500/10 transition text-xs sm:text-sm md:text-base"
               >
                 ⚡ Buy Now
               </button>
               <div className="relative">
-                <button 
+                <button
                   onClick={handleShare}
                   className="w-full sm:w-auto border-2 border-cloudsfit-blue text-cloudsfit-blue px-3 sm:px-4 py-2 sm:py-3 font-bold uppercase rounded-lg hover:bg-cloudsfit-blue/10 transition text-xs sm:text-sm md:text-base"
                 >
@@ -436,19 +556,18 @@ export default function ProductDetail({
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`py-4 px-3 sm:px-4 uppercase font-bold text-xs sm:text-sm transition whitespace-nowrap ${
-                  activeTab === tab
-                    ? "text-cloudsfit-purple border-b-2 border-cloudsfit-purple"
-                    : "text-gray-400 hover:text-white"
-                }`}
+                className={`py-4 px-3 sm:px-4 uppercase font-bold text-xs sm:text-sm transition whitespace-nowrap ${activeTab === tab
+                  ? "text-cloudsfit-purple border-b-2 border-cloudsfit-purple"
+                  : "text-gray-400 hover:text-white"
+                  }`}
               >
                 {tab === "description"
                   ? "Description"
                   : tab === "specifications"
-                  ? "Specifications"
-                  : tab === "sizeGuide"
-                  ? "Size Guide"
-                  : "Shipping & Returns"}
+                    ? "Specifications"
+                    : tab === "sizeGuide"
+                      ? "Size Guide"
+                      : "Shipping & Returns"}
               </button>
             ))}
           </div>
@@ -563,7 +682,7 @@ export default function ProductDetail({
                 <h3 className="text-lg sm:text-xl md:text-2xl font-bold mb-6 uppercase">
                   Shipping & Returns
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                   {/* Shipping Section */}
                   <div className="border border-neutral-700 rounded-lg p-4 sm:p-6">
                     <div className="flex items-center gap-3 mb-4">
@@ -650,13 +769,19 @@ export default function ProductDetail({
                 <p className="text-gray-400 text-sm">Based on {product.reviews} reviews</p>
               </div>
               <div className="mt-6 space-y-2">
-                {[5, 4, 3, 2, 1].map((stars) => (
+                {([
+                  { stars: 5, pct: 72 },
+                  { stars: 4, pct: 18 },
+                  { stars: 3, pct: 6 },
+                  { stars: 2, pct: 3 },
+                  { stars: 1, pct: 1 },
+                ] as const).map(({ stars, pct }) => (
                   <div key={stars} className="flex items-center gap-2">
                     <span className="text-xs text-gray-400 w-10">{stars} star</span>
                     <div className="flex-1 h-2 bg-neutral-800 rounded-full overflow-hidden">
                       <div
                         className="h-full bg-gradient-to-r from-cloudsfit-purple to-cloudsfit-blue"
-                        style={{ width: `${Math.random() * 100}%` }}
+                        style={{ width: `${pct}%` }}
                       />
                     </div>
                     <span className="text-xs text-gray-400 w-8">0</span>
@@ -692,64 +817,71 @@ export default function ProductDetail({
               View All <span>›</span>
             </Link>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
-            {getProductsByCollection(collectionHandle)
-              .filter((p: any) => p.id !== product.id)
-              .slice(0, 4)
-              .map((relatedProduct: any) => (
-                <Link
-                  key={relatedProduct.id}
-                  href={`/products/${relatedProduct.id}`}
-                  className="group border border-neutral-800 rounded-lg overflow-hidden hover:border-cloudsfit-purple/50 transition"
-                >
-                  {/* Product Image */}
-                  <div className="relative aspect-square bg-neutral-900 overflow-hidden">
-                    <img
-                      src={relatedProduct.image || relatedProduct.images?.[0]}
-                      alt={relatedProduct.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition"
-                    />
-                    {/* Wishlist Button */}
-                    <button 
-                      onClick={(e) => {
-                        e.preventDefault();
-                        if (inWishlist(relatedProduct.id)) {
-                          removeFromWishlist(relatedProduct.id);
-                        } else {
-                          addToWishlist(relatedProduct);
-                        }
-                      }}
-                      className={`absolute top-2 sm:top-4 right-2 sm:right-4 w-7 h-7 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition flex-shrink-0 ${
-                        inWishlist(relatedProduct.id)
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {relatedProducts.length > 0 ? (
+              relatedProducts
+                .filter((p) => p.id !== product.id)
+                .slice(0, 4)
+                .map((relatedProduct) => (
+                  <Link
+                    key={relatedProduct.id}
+                    href={`/collections/${collectionHandle}/products/${relatedProduct.id}`}
+                    className="group border border-neutral-800 rounded-lg overflow-hidden hover:border-cloudsfit-purple/50 transition"
+                  >
+                    {/* Product Image */}
+                    <div className="relative aspect-square bg-neutral-900 overflow-hidden">
+                      <img
+                        src={relatedProduct.image}
+                        alt={relatedProduct.name}
+                        className="w-full h-full object-cover group-hover:scale-105 transition"
+                      />
+                      {/* Wishlist Button */}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          if (inWishlist(relatedProduct.id)) {
+                            removeFromWishlist(relatedProduct.id);
+                          } else {
+                            addToWishlist(relatedProduct);
+                          }
+                        }}
+                        className={`absolute top-2 sm:top-4 right-2 sm:right-4 w-7 h-7 sm:w-10 sm:h-10 rounded-full flex items-center justify-center transition flex-shrink-0 ${inWishlist(relatedProduct.id)
                           ? "bg-red-500/80 hover:bg-red-600"
                           : "bg-neutral-800/80 hover:bg-neutral-700"
-                      }`}
-                    >
-                      <Heart size={16} className={`sm:w-5 sm:h-5 ${inWishlist(relatedProduct.id) ? "fill-white" : ""}`} />
-                    </button>
-                  </div>
+                          }`}
+                      >
+                        <Heart size={16} className={`sm:w-5 sm:h-5 ${inWishlist(relatedProduct.id) ? "fill-white" : ""}`} />
+                      </button>
+                    </div>
 
-                  {/* Product Info */}
-                  <div className="p-2 sm:p-4">
-                    <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-white group-hover:text-cloudsfit-purple transition mb-1 sm:mb-2 line-clamp-2">
-                      {relatedProduct.name}
-                    </h3>
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm sm:text-lg font-bold text-cloudsfit-blue">
-                        {relatedProduct.price}
-                      </p>
-                      <div className="flex text-xs text-yellow-400">
-                        {[...Array(Math.floor(relatedProduct.rating || 0))].map((_, i) => (
-                          <span key={i}>★</span>
-                        ))}
+                    {/* Product Info */}
+                    <div className="p-2 sm:p-4">
+                      <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wide text-white group-hover:text-cloudsfit-purple transition mb-1 sm:mb-2 line-clamp-2">
+                        {relatedProduct.name}
+                      </h3>
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm sm:text-lg font-bold text-cloudsfit-blue">
+                          {relatedProduct.price}
+                        </p>
+                        <div className="flex text-xs text-yellow-400">
+                          {[...Array(5)].map((_, i) => (
+                            <span key={i} className={i < Math.floor(relatedProduct.rating || 0) ? "text-yellow-400" : "text-gray-600"}>★</span>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                ))
+            ) : (
+              <p className="col-span-full text-gray-500 text-center py-8">
+                More products from this collection coming soon!
+              </p>
+            )}
           </div>
         </div>
       </div>
     </div>
   );
 }
+
+

@@ -6,16 +6,21 @@ import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { HttpTypes } from "@medusajs/types"
 
 export const retrieveOrder = async (id: string) => {
+  const authHeaders = await getAuthHeaders()
+  if (!Object.keys(authHeaders).length) {
+    return null
+  }
+
   const headers = {
-    ...(await getAuthHeaders()),
+    ...authHeaders,
   }
 
   const next = {
     ...(await getCacheOptions("orders")),
   }
 
-  return sdk.client
-    .fetch<HttpTypes.StoreOrderResponse>(`/store/orders/${id}`, {
+  try {
+    const { order } = await sdk.client.fetch<HttpTypes.StoreOrderResponse>(`/store/orders/${id}`, {
       method: "GET",
       query: {
         fields:
@@ -23,10 +28,17 @@ export const retrieveOrder = async (id: string) => {
       },
       headers,
       next,
-      cache: "force-cache",
+      cache: "no-store",
     })
-    .then(({ order }) => order)
-    .catch((err) => medusaError(err))
+
+    return order
+  } catch (err: any) {
+    const status = err?.response?.status || err?.status
+    if (status === 401 || status === 403 || status === 404) {
+      return null
+    }
+    return medusaError(err)
+  }
 }
 
 export const listOrders = async (
@@ -34,16 +46,21 @@ export const listOrders = async (
   offset: number = 0,
   filters?: Record<string, any>
 ) => {
+  const authHeaders = await getAuthHeaders()
+  if (!Object.keys(authHeaders).length) {
+    return []
+  }
+
   const headers = {
-    ...(await getAuthHeaders()),
+    ...authHeaders,
   }
 
   const next = {
     ...(await getCacheOptions("orders")),
   }
 
-  return sdk.client
-    .fetch<HttpTypes.StoreOrderListResponse>(`/store/orders`, {
+  try {
+    const { orders } = await sdk.client.fetch<HttpTypes.StoreOrderListResponse>(`/store/orders`, {
       method: "GET",
       query: {
         limit,
@@ -54,10 +71,17 @@ export const listOrders = async (
       },
       headers,
       next,
-      cache: "force-cache",
+      cache: "no-store",
     })
-    .then(({ orders }) => orders)
-    .catch((err) => medusaError(err))
+
+    return orders
+  } catch (err: any) {
+    const status = err?.response?.status || err?.status
+    if (status === 401 || status === 403) {
+      return []
+    }
+    return medusaError(err)
+  }
 }
 
 export const createTransferRequest = async (

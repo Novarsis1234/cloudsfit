@@ -1,179 +1,139 @@
 "use client"
 
 import { useCart } from "@/lib/context/cart-context"
+import Image from "next/image"
 import Link from "next/link"
-import { Trash2, Plus, Minus } from "lucide-react"
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { syncCart as syncWithMedusa } from "@/lib/data/cart"
 
 export default function ContextCart() {
-  const { items, removeItem, updateQuantity, itemCount } = useCart()
+    const { items, removeItem, updateQuantity } = useCart()
+    const [isSyncing, setIsSyncing] = useState(false)
+    const router = useRouter()
 
-  const subtotal = items.reduce((total, item) => {
-    const price = parseFloat(item.price.replace(/[^0-9.]/g, ""))
-    return total + price * item.quantity
-  }, 0)
+    if (items.length === 0) return null
 
-  const shipping = subtotal > 999 ? 0 : 99
-  const tax = Math.round(subtotal * 0.18)
-  const total = subtotal + shipping + tax
+    const handleCheckout = async () => {
+        setIsSyncing(true)
+        try {
+            // Sync all items from localStorage to Medusa backend in one server action call
+            const syncItems = items.map(item => ({
+                variantId: item.variantId,
+                quantity: item.quantity
+            }))
 
-  if (items.length === 0) {
+            console.log(`[ContextCart] Syncing ${syncItems.length} items to Medusa...`)
+            await syncWithMedusa(syncItems, "in")
+
+            router.push("/checkout")
+        } catch (error) {
+            console.error("[ContextCart] Sync failed:", error)
+            // Even if sync fails, try to go to checkout
+            router.push("/checkout")
+        } finally {
+            setIsSyncing(false)
+        }
+    }
+
+    const parsePrice = (price: any) => {
+        const p = parseFloat(price?.toString().replace(/[^0-9.]/g, "") || "0")
+        return isNaN(p) ? 0 : p
+    }
+
+    const subtotal = items.reduce((total, item) => {
+        return total + parsePrice(item.price) * item.quantity
+    }, 0)
+
     return (
-      <div className="bg-black min-h-[70vh] text-white py-12 pt-6 md:pt-8">
-        <div className="max-w-7xl mx-auto px-4">
-          <h1 className="text-3xl md:text-4xl font-extrabold uppercase mb-8">Shopping Cart</h1>
-          <div className="flex flex-col items-center justify-center py-20 text-center border border-neutral-800 rounded-lg">
-            <div className="text-6xl mb-4">🛒</div>
-            <h2 className="text-2xl font-bold uppercase mb-2">Your cart is empty</h2>
-            <p className="text-gray-400 mb-8 max-w-sm">
-              Looks like you haven't added any items yet. Start shopping to add items to your cart!
-            </p>
-            <Link
-              href="/shop"
-              className="px-8 py-3 bg-gradient-to-r from-cloudsfit-purple to-cloudsfit-blue text-white font-bold rounded-lg hover:opacity-90 transition"
-            >
-              Continue Shopping
-            </Link>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  return (
-    <div className="bg-black min-h-screen text-white py-8 pt-6 md:pt-8">
-      <div className="max-w-7xl mx-auto px-4">
-        <h1 className="text-3xl md:text-4xl font-extrabold uppercase mb-8">Shopping Cart</h1>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Cart Items */}
-          <div className="lg:col-span-2">
-            <div className="border border-neutral-800 rounded-lg overflow-hidden">
-              <div className="bg-neutral-900 px-6 py-4 border-b border-neutral-800 flex justify-between items-center">
-                <h2 className="font-bold uppercase text-lg">{itemCount} Items</h2>
-                <p className="text-gray-400 text-sm">Item Details</p>
-              </div>
-
-              <div className="divide-y divide-neutral-800">
-                {items.map((item) => (
-                  <div key={item.id} className="px-6 py-4 flex gap-4">
-                    <div className="w-20 h-20 bg-neutral-800 rounded overflow-hidden flex-shrink-0">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-
-                    <div className="flex-1">
-                      <h3 className="font-bold uppercase text-sm md:text-base mb-2">{item.name}</h3>
-                      <div className="text-xs text-gray-400 mb-3 space-y-1">
-                        <p>Color: <span className="text-white font-semibold">{item.color}</span></p>
-                        <p>Size: <span className="text-white font-semibold">{item.size}</span></p>
-                        <p>Price: <span className="text-cloudsfit-blue font-bold">{item.price}</span></p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col items-end gap-4">
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-2 border border-neutral-700 rounded">
-                        <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          className="p-1 hover:bg-neutral-800 transition"
-                        >
-                          <Minus size={16} />
-                        </button>
-                        <span className="px-3 font-semibold">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="p-1 hover:bg-neutral-800 transition"
-                        >
-                          <Plus size={16} />
-                        </button>
-                      </div>
-
-                      {/* Total & Remove */}
-                      <div>
-                        <p className="text-sm text-gray-400 mb-2">
-                          Total: <span className="text-cloudsfit-blue font-bold">{parseFloat(item.price.replace(/[^0-9.]/g, "")) * item.quantity}</span>
-                        </p>
-                        <button
-                          onClick={() => removeItem(item.id)}
-                          className="text-red-500 hover:text-red-400 transition flex items-center gap-1"
-                        >
-                          <Trash2 size={16} />
-                          <span className="text-xs font-semibold">Remove</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="mt-6">
-              <Link
-                href="/shop"
-                className="text-cloudsfit-purple hover:text-cloudsfit-blue transition font-semibold uppercase text-sm"
-              >
-                ← Continue Shopping
-              </Link>
-            </div>
-          </div>
-
-          {/* Order Summary */}
-          <div className="bg-neutral-900 border border-neutral-800 rounded-lg p-6 h-fit sticky top-24">
-            <h3 className="text-xl font-bold uppercase mb-6">Order Summary</h3>
-
-            <div className="space-y-4 mb-6 border-b border-neutral-800 pb-6">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Subtotal ({itemCount} items)</span>
-                <span className="text-white font-semibold">₹{subtotal.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Shipping</span>
-                <span className="text-white font-semibold">
-                  {shipping === 0 ? (
-                    <span className="text-green-400">FREE</span>
-                  ) : (
-                    `₹${shipping}`
-                  )}
+        <div className="bg-neutral-900/50 backdrop-blur-xl border border-cloudsfit-purple/20 p-6 sm:p-8 rounded-3xl mb-12 shadow-2xl">
+            <div className="flex items-center justify-between mb-8">
+                <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter bg-gradient-to-r from-cloudsfit-purple to-cloudsfit-blue bg-clip-text text-transparent">
+                    Shopping Cart
+                </h2>
+                <span className="text-xs font-bold uppercase tracking-widest text-gray-500 bg-neutral-800 px-3 py-1 rounded-full">
+                    {items.length} {items.length === 1 ? 'Item' : 'Items'}
                 </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Tax (18%)</span>
-                <span className="text-white font-semibold">₹{tax}</span>
-              </div>
             </div>
 
-            <div className="flex justify-between items-center mb-6">
-              <span className="text-lg font-bold uppercase">Total</span>
-              <span className="text-2xl font-extrabold text-cloudsfit-blue">₹{total}</span>
+            <div className="space-y-6">
+                {items.map((item, index) => (
+                    <div key={`context-cart-item-${item.variantId}-${index}`} className="flex flex-col sm:flex-row gap-6 bg-neutral-800/30 p-4 rounded-2xl border border-white/5 hover:border-cloudsfit-blue/30 transition-all group">
+                        <div className="relative w-full sm:w-24 h-48 sm:h-24 bg-neutral-800 rounded-xl overflow-hidden flex-shrink-0 border border-white/10">
+                            {item.image ? (
+                                <Image src={item.image} alt={item.name} fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-gray-600">No img</div>
+                            )}
+                        </div>
+
+                        <div className="flex-1 flex flex-col justify-between">
+                            <div>
+                                <h3 className="text-lg font-bold text-white group-hover:text-cloudsfit-blue transition-colors">{item.name}</h3>
+                                {item.description && (
+                                    <p className="text-xs text-gray-400 mt-1 line-clamp-1 max-w-[250px]">
+                                        {item.description}
+                                    </p>
+                                )}
+                                {((item.color && item.color !== "Default") || (item.size && item.size !== "Default")) && (
+                                    <p className="text-xs font-bold uppercase tracking-widest text-gray-500 mt-2">
+                                        {item.color !== "Default" ? item.color : ""}
+                                        {item.color !== "Default" && item.size !== "Default" ? <span className="mx-2 opacity-30">|</span> : ""}
+                                        {item.size !== "Default" ? item.size : ""}
+                                    </p>
+                                )}
+                            </div>
+
+                            <div className="flex items-center gap-4 mt-4 sm:mt-0">
+                                <div className="flex items-center bg-black/40 border border-white/10 rounded-lg p-1">
+                                    <button
+                                        onClick={() => updateQuantity(item.variantId, item.quantity - 1)}
+                                        className="w-8 h-8 flex items-center justify-center text-white hover:bg-neutral-800 rounded-md transition-colors"
+                                    >
+                                        -
+                                    </button>
+                                    <span className="text-sm font-bold w-8 text-center text-white">{item.quantity}</span>
+                                    <button
+                                        onClick={() => updateQuantity(item.variantId, item.quantity + 1)}
+                                        className="w-8 h-8 flex items-center justify-center text-white hover:bg-neutral-800 rounded-md transition-colors"
+                                    >
+                                        +
+                                    </button>
+                                </div>
+                                <button
+                                    onClick={() => removeItem(item.variantId)}
+                                    className="text-red-500/70 hover:text-red-400 text-xs font-bold uppercase tracking-widest transition-colors ml-auto sm:ml-0"
+                                >
+                                    Remove
+                                </button>
+                            </div>
+                        </div>
+
+                        <div className="text-right flex flex-col justify-center border-t sm:border-t-0 sm:border-l border-white/5 pt-4 sm:pt-0 sm:pl-6 min-w-[100px]">
+                            <p className="text-xs text-gray-500 uppercase font-bold mb-1">Total</p>
+                            <p className="text-xl font-black text-white">
+                                ₹{(parsePrice(item.price) * item.quantity).toLocaleString('en-IN')}
+                            </p>
+                        </div>
+                    </div>
+                ))}
             </div>
 
-            {subtotal < 999 && (
-              <div className="bg-cloudsfit-purple/20 border border-cloudsfit-purple rounded p-3 mb-6 text-xs text-center">
-                <p className="text-cloudsfit-purple font-semibold">
-                  Add ₹{(999 - subtotal).toFixed(2)} more for FREE shipping!
-                </p>
-              </div>
-            )}
-
-            <button className="w-full bg-gradient-to-r from-cloudsfit-purple to-cloudsfit-blue py-3 font-bold uppercase rounded-lg hover:opacity-90 transition mb-3">
-              Proceed to Checkout
-            </button>
-
-            <button className="w-full border border-neutral-700 py-3 font-bold uppercase rounded-lg hover:border-cloudsfit-purple transition text-gray-300">
-              Continue Shopping
-            </button>
-
-            <div className="mt-6 text-xs text-gray-500 space-y-2">
-              <p>✓ Free shipping on orders over ₹999</p>
-              <p>✓ Easy returns within 7 days</p>
-              <p>✓ 100% secure checkout</p>
+            <div className="mt-10 pt-8 border-t border-white/10 flex flex-col sm:flex-row justify-between items-center gap-6">
+                <div className="text-center sm:text-left">
+                    <span className="block text-xs font-bold uppercase tracking-[0.2em] text-gray-500 mb-1">Estimated Subtotal</span>
+                    <span className="text-3xl font-black text-white italic tracking-tighter">
+                        ₹{subtotal.toLocaleString('en-IN')}
+                    </span>
+                </div>
+                <button
+                    onClick={handleCheckout}
+                    disabled={isSyncing}
+                    className="w-full sm:w-auto bg-gradient-to-r from-cloudsfit-purple to-cloudsfit-blue text-white font-black uppercase tracking-widest text-xs px-10 py-4 rounded-xl hover:shadow-[0_0_30px_-5px_rgba(139,92,246,0.5)] active:scale-[0.98] transition-all disabled:opacity-50"
+                >
+                    {isSyncing ? "Preparing Checkout..." : "Secure Checkout"}
+                </button>
             </div>
-          </div>
         </div>
-      </div>
-    </div>
-  )
+    )
 }

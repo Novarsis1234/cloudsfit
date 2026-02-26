@@ -14,49 +14,41 @@ const LineItemPrice = ({
   style = "default",
   currencyCode,
 }: LineItemPriceProps) => {
-  const { total, original_total } = item
-  const originalPrice = original_total
-  const currentPrice = total
+  const originalPrice = item.original_total ?? 0
+  const currentPrice = item.total ?? 0
   const hasReducedPrice = currentPrice < originalPrice
 
   return (
-    <div className="flex flex-col gap-x-2 text-ui-fg-subtle items-end">
-      <div className="text-left">
-        {hasReducedPrice && (
-          <>
-            <p>
-              {style === "default" && (
-                <span className="text-ui-fg-subtle">Original: </span>
-              )}
-              <span
-                className="line-through text-ui-fg-muted"
-                data-testid="product-original-price"
-              >
-                {convertToLocale({
-                  amount: originalPrice,
-                  currency_code: currencyCode,
-                })}
-              </span>
-            </p>
-            {style === "default" && (
-              <span className="text-ui-fg-interactive">
-                -{getPercentageDiff(originalPrice, currentPrice || 0)}%
-              </span>
-            )}
-          </>
-        )}
-        <span
-          className={clx("text-base-regular", {
-            "text-ui-fg-interactive": hasReducedPrice,
-          })}
-          data-testid="product-price"
-        >
-          {convertToLocale({
-            amount: currentPrice,
-            currency_code: currencyCode,
-          })}
-        </span>
-      </div>
+    <div className="flex flex-col items-end gap-1">
+      {hasReducedPrice && (
+        <div className="flex items-center gap-2">
+          <span
+            className="text-xs line-through text-gray-500 font-bold"
+            data-testid="product-original-price"
+          >
+            {convertToLocale({
+              amount: originalPrice,
+              currency_code: currencyCode,
+            })}
+          </span>
+          {style === "default" && (
+            <span className="text-[10px] bg-cloudsfit-purple/20 text-cloudsfit-purple px-1.5 py-0.5 rounded-md font-black italic">
+              -{getPercentageDiff(originalPrice, currentPrice)}%
+            </span>
+          )}
+        </div>
+      )}
+      <span
+        className={clx("text-xl font-black italic tracking-tighter text-white", {
+          "text-cloudsfit-blue": hasReducedPrice,
+        })}
+        data-testid="product-price"
+      >
+        {convertToLocale({
+          amount: currentPrice,
+          currency_code: currencyCode,
+        })}
+      </span>
     </div>
   )
 }

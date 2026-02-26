@@ -342,22 +342,13 @@ export default async function seedDemoData({ container }: ExecArgs) {
   ).run({
     input: {
       product_categories: [
-        {
-          name: "Shirts",
-          is_active: true,
-        },
-        {
-          name: "Sweatshirts",
-          is_active: true,
-        },
-        {
-          name: "Pants",
-          is_active: true,
-        },
-        {
-          name: "Merch",
-          is_active: true,
-        },
+        { name: "NEW ARRIVALS", is_active: true },
+        { name: "BEST SELLERS", is_active: true },
+        { name: "REGULAR TEES", is_active: true },
+        { name: "OVERSIZED TEES", is_active: true },
+        { name: "ACID WASH", is_active: true },
+        { name: "OVERSIZED HOODIES", is_active: true },
+        { name: "SWEATSHIRTS", is_active: true },
       ],
     },
   });
@@ -366,120 +357,120 @@ export default async function seedDemoData({ container }: ExecArgs) {
     input: {
       products: [
         {
-          title: "Medusa T-Shirt",
+          title: "Oversized Tee - Acid Wash Black",
           category_ids: [
-            categoryResult.find((cat) => cat.name === "Shirts")!.id,
+            categoryResult.find((cat) => cat.name === "ACID WASH")!.id,
+            categoryResult.find((cat) => cat.name === "OVERSIZED TEES")!.id,
+            categoryResult.find((cat) => cat.name === "NEW ARRIVALS")!.id,
           ],
-          description:
-            "Reimagine the feeling of a classic T-shirt. With our cotton T-shirts, everyday essentials no longer have to be ordinary.",
-          handle: "t-shirt",
+          description: "Premium oversized acid wash tee in black. Limited edition.",
+          handle: "oversized-tee-acid-wash-black",
           weight: 400,
           status: ProductStatus.PUBLISHED,
           shipping_profile_id: shippingProfile.id,
           images: [
-            {
-              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-black-front.png",
-            },
-            {
-              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-black-back.png",
-            },
-            {
-              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-white-front.png",
-            },
-            {
-              url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-white-back.png",
-            },
+            { url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-black-front.png" },
+            { url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-black-back.png" },
           ],
           options: [
-            {
-              title: "Size",
-              values: ["S", "M", "L", "XL"],
-            },
-            {
-              title: "Color",
-              values: ["Black", "White"],
-            },
+            { title: "Size", values: ["S", "M", "L", "XL"] },
+            { title: "Color", values: ["Black"] },
           ],
           variants: [
-            {
-              title: "S / Black",
-              sku: "SHIRT-S-BLACK",
-              options: {
-                Size: "S",
-                Color: "Black",
-              },
-              prices: [{$([Environment]::NewLine)                {$([Environment]::NewLine)                  amount: 800,$([Environment]::NewLine)                  currency_code: "inr",$([Environment]::NewLine)                },$([Environment]::NewLine)              ],
-            },
-            {
-              title: "S / White",
-              sku: "SHIRT-S-WHITE",
-              options: {
-                Size: "S",
-                Color: "White",
-              },
-              prices: [{$([Environment]::NewLine)                {$([Environment]::NewLine)                  amount: 800,$([Environment]::NewLine)                  currency_code: "inr",$([Environment]::NewLine)                },$([Environment]::NewLine)              ],
-            },
-            {
-              title: "M / Black",
-              sku: "SHIRT-M-BLACK",
-              options: {
-                Size: "M",
-                Color: "Black",
-              },
-              prices: [{$([Environment]::NewLine)                {$([Environment]::NewLine)                  amount: 800,$([Environment]::NewLine)                  currency_code: "inr",$([Environment]::NewLine)                },$([Environment]::NewLine)              ],
-            },
-            {
-              title: "M / White",
-              sku: "SHIRT-M-WHITE",
-              options: {
-                Size: "M",
-                Color: "White",
-              },
-              prices: [{$([Environment]::NewLine)                {$([Environment]::NewLine)                  amount: 800,$([Environment]::NewLine)                  currency_code: "inr",$([Environment]::NewLine)                },$([Environment]::NewLine)              ],
-            },
-            {
-              title: "L / Black",
-              sku: "SHIRT-L-BLACK",
-              options: {
-                Size: "L",
-                Color: "Black",
-              },
-              prices: [{$([Environment]::NewLine)                {$([Environment]::NewLine)                  amount: 800,$([Environment]::NewLine)                  currency_code: "inr",$([Environment]::NewLine)                },$([Environment]::NewLine)              ],
-            },
-            {
-              title: "L / White",
-              sku: "SHIRT-L-WHITE",
-              options: {
-                Size: "L",
-                Color: "White",
-              },
-              prices: [{$([Environment]::NewLine)                {$([Environment]::NewLine)                  amount: 800,$([Environment]::NewLine)                  currency_code: "inr",$([Environment]::NewLine)                },$([Environment]::NewLine)              ],
-            },
-            {
-              title: "XL / Black",
-              sku: "SHIRT-XL-BLACK",
-              options: {
-                Size: "XL",
-                Color: "Black",
-              },
-              prices: [{$([Environment]::NewLine)                {$([Environment]::NewLine)                  amount: 800,$([Environment]::NewLine)                  currency_code: "inr",$([Environment]::NewLine)                },$([Environment]::NewLine)              ],
-            },
-            {
-              title: "XL / White",
-              sku: "SHIRT-XL-WHITE",
-              options: {
-                Size: "XL",
-                Color: "White",
-              },
-              prices: [{$([Environment]::NewLine)                {$([Environment]::NewLine)                  amount: 800,$([Environment]::NewLine)                  currency_code: "inr",$([Environment]::NewLine)                },$([Environment]::NewLine)              ],
-            },
+            { title: "S / Black", sku: "TEE-ACIDWASH-BLACK-S", options: { Size: "S", Color: "Black" }, prices: [{ amount: 999, currency_code: "inr" }] },
+            { title: "M / Black", sku: "TEE-ACIDWASH-BLACK-M", options: { Size: "M", Color: "Black" }, prices: [{ amount: 999, currency_code: "inr" }] },
+            { title: "L / Black", sku: "TEE-ACIDWASH-BLACK-L", options: { Size: "L", Color: "Black" }, prices: [{ amount: 999, currency_code: "inr" }] },
+            { title: "XL / Black", sku: "TEE-ACIDWASH-BLACK-XL", options: { Size: "XL", Color: "Black" }, prices: [{ amount: 999, currency_code: "inr" }] },
           ],
-          sales_channels: [
-            {
-              id: defaultSalesChannel[0].id,
-            },
-          ],
+          sales_channels: [ { id: defaultSalesChannel[0].id } ],
         },
+        {
+          title: "Best Seller Oversized Hoodie",
+          category_ids: [
+            categoryResult.find((cat) => cat.name === "OVERSIZED HOODIES")!.id,
+            categoryResult.find((cat) => cat.name === "BEST SELLERS")!.id,
+          ],
+          description: "Our best-selling oversized hoodie. Super soft and warm.",
+          handle: "best-seller-oversized-hoodie",
+          weight: 600,
+          status: ProductStatus.PUBLISHED,
+          shipping_profile_id: shippingProfile.id,
+          images: [
+            { url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/sweatshirt-vintage-front.png" },
+            { url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/sweatshirt-vintage-back.png" },
+          ],
+          options: [
+            { title: "Size", values: ["S", "M", "L", "XL"] },
+            { title: "Color", values: ["Grey", "Black"] },
+          ],
+          variants: [
+            { title: "S / Grey", sku: "HOODIE-BESTSELLER-GREY-S", options: { Size: "S", Color: "Grey" }, prices: [{ amount: 1499, currency_code: "inr" }] },
+            { title: "M / Grey", sku: "HOODIE-BESTSELLER-GREY-M", options: { Size: "M", Color: "Grey" }, prices: [{ amount: 1499, currency_code: "inr" }] },
+            { title: "L / Grey", sku: "HOODIE-BESTSELLER-GREY-L", options: { Size: "L", Color: "Grey" }, prices: [{ amount: 1499, currency_code: "inr" }] },
+            { title: "XL / Grey", sku: "HOODIE-BESTSELLER-GREY-XL", options: { Size: "XL", Color: "Grey" }, prices: [{ amount: 1499, currency_code: "inr" }] },
+            { title: "S / Black", sku: "HOODIE-BESTSELLER-BLACK-S", options: { Size: "S", Color: "Black" }, prices: [{ amount: 1499, currency_code: "inr" }] },
+            { title: "M / Black", sku: "HOODIE-BESTSELLER-BLACK-M", options: { Size: "M", Color: "Black" }, prices: [{ amount: 1499, currency_code: "inr" }] },
+            { title: "L / Black", sku: "HOODIE-BESTSELLER-BLACK-L", options: { Size: "L", Color: "Black" }, prices: [{ amount: 1499, currency_code: "inr" }] },
+            { title: "XL / Black", sku: "HOODIE-BESTSELLER-BLACK-XL", options: { Size: "XL", Color: "Black" }, prices: [{ amount: 1499, currency_code: "inr" }] },
+          ],
+          sales_channels: [ { id: defaultSalesChannel[0].id } ],
+        },
+        {
+          title: "Regular Tee White",
+          category_ids: [
+            categoryResult.find((cat) => cat.name === "REGULAR TEES")!.id,
+          ],
+          description: "Classic regular fit tee in white.",
+          handle: "regular-tee-white",
+          weight: 350,
+          status: ProductStatus.PUBLISHED,
+          shipping_profile_id: shippingProfile.id,
+          images: [
+            { url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-white-front.png" },
+            { url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/tee-white-back.png" },
+          ],
+          options: [
+            { title: "Size", values: ["S", "M", "L", "XL"] },
+            { title: "Color", values: ["White"] },
+          ],
+          variants: [
+            { title: "S / White", sku: "TEE-REGULAR-WHITE-S", options: { Size: "S", Color: "White" }, prices: [{ amount: 799, currency_code: "inr" }] },
+            { title: "M / White", sku: "TEE-REGULAR-WHITE-M", options: { Size: "M", Color: "White" }, prices: [{ amount: 799, currency_code: "inr" }] },
+            { title: "L / White", sku: "TEE-REGULAR-WHITE-L", options: { Size: "L", Color: "White" }, prices: [{ amount: 799, currency_code: "inr" }] },
+            { title: "XL / White", sku: "TEE-REGULAR-WHITE-XL", options: { Size: "XL", Color: "White" }, prices: [{ amount: 799, currency_code: "inr" }] },
+          ],
+          sales_channels: [ { id: defaultSalesChannel[0].id } ],
+        },
+        {
+          title: "Sweatshirt - New Arrival",
+          category_ids: [
+            categoryResult.find((cat) => cat.name === "SWEATSHIRTS")!.id,
+            categoryResult.find((cat) => cat.name === "NEW ARRIVALS")!.id,
+          ],
+          description: "New arrival premium sweatshirt.",
+          handle: "sweatshirt-new-arrival",
+          weight: 500,
+          status: ProductStatus.PUBLISHED,
+          shipping_profile_id: shippingProfile.id,
+          images: [
+            { url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/sweatshirt-vintage-front.png" },
+            { url: "https://medusa-public-images.s3.eu-west-1.amazonaws.com/sweatshirt-vintage-back.png" },
+          ],
+          options: [
+            { title: "Size", values: ["S", "M", "L", "XL"] },
+            { title: "Color", values: ["Grey"] },
+          ],
+          variants: [
+            { title: "S / Grey", sku: "SWEATSHIRT-NEWARRIVAL-GREY-S", options: { Size: "S", Color: "Grey" }, prices: [{ amount: 1299, currency_code: "inr" }] },
+            { title: "M / Grey", sku: "SWEATSHIRT-NEWARRIVAL-GREY-M", options: { Size: "M", Color: "Grey" }, prices: [{ amount: 1299, currency_code: "inr" }] },
+            { title: "L / Grey", sku: "SWEATSHIRT-NEWARRIVAL-GREY-L", options: { Size: "L", Color: "Grey" }, prices: [{ amount: 1299, currency_code: "inr" }] },
+            { title: "XL / Grey", sku: "SWEATSHIRT-NEWARRIVAL-GREY-XL", options: { Size: "XL", Color: "Grey" }, prices: [{ amount: 1299, currency_code: "inr" }] },
+          ],
+          sales_channels: [ { id: defaultSalesChannel[0].id } ],
+        },
+      ],
+    },
+  });
         {
           title: "Medusa Sweatshirt",
           category_ids: [

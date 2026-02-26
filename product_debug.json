@@ -1,0 +1,76 @@
+﻿{
+    "id":  "prod_01KHRAKYEWT0MKM652SK4MF2PF",
+    "title":  "Hoodie",
+    "variants":  [
+                     {
+                         "id":  "variant_01KHRAKZBGGTDEDXJRQCQZAF4V",
+                         "calculated_price":  {
+                                                  "id":  "pset_01KHRAM04VEF40MRW1KB1H4RK3",
+                                                  "is_calculated_price_price_list":  false,
+                                                  "is_calculated_price_tax_inclusive":  true,
+                                                  "calculated_amount":  390,
+                                                  "raw_calculated_amount":  {
+                                                                                "value":  "390",
+                                                                                "precision":  20
+                                                                            },
+                                                  "is_original_price_price_list":  false,
+                                                  "is_original_price_tax_inclusive":  true,
+                                                  "original_amount":  390,
+                                                  "raw_original_amount":  {
+                                                                              "value":  "390",
+                                                                              "precision":  20
+                                                                          },
+                                                  "currency_code":  "inr",
+                                                  "calculated_price":  {
+                                                                           "id":  "price_01KHRAM04KYGRG4TTWGZR3XHWY",
+                                                                           "price_list_id":  null,
+                                                                           "price_list_type":  null,
+                                                                           "min_quantity":  null,
+                                                                           "max_quantity":  null
+                                                                       },
+                                                  "original_price":  {
+                                                                         "id":  "price_01KHRAM04KYGRG4TTWGZR3XHWY",
+                                                                         "price_list_id":  null,
+                                                                         "price_list_type":  null,
+                                                                         "min_quantity":  null,
+                                                                         "max_quantity":  null
+                                                                     }
+                                              }
+                     },
+                     {
+                         "id":  "variant_01KHRAKZBHJEGR55K73WMSWJ80",
+                         "calculated_price":  {
+                                                  "id":  "pset_01KHRAM04WSGQ5DKH4YQ982QG3",
+                                                  "is_calculated_price_price_list":  false,
+                                                  "is_calculated_price_tax_inclusive":  true,
+                                                  "calculated_amount":  456,
+                                                  "raw_calculated_amount":  {
+                                                                                "value":  "456",
+                                                                                "precision":  20
+                                                                            },
+                                                  "is_original_price_price_list":  false,
+                                                  "is_original_price_tax_inclusive":  true,
+                                                  "original_amount":  456,
+                                                  "raw_original_amount":  {
+                                                                              "value":  "456",
+                                                                              "precision":  20
+                                                                          },
+                                                  "currency_code":  "inr",
+                                                  "calculated_price":  {
+                                                                           "id":  "price_01KHWXCGYGYTRTV3D02TQQJ698",
+                                                                           "price_list_id":  null,
+                                                                           "price_list_type":  null,
+                                                                           "min_quantity":  null,
+                                                                           "max_quantity":  null
+                                                                       },
+                                                  "original_price":  {
+                                                                         "id":  "price_01KHWXCGYGYTRTV3D02TQQJ698",
+                                                                         "price_list_id":  null,
+                                                                         "price_list_type":  null,
+                                                                         "min_quantity":  null,
+                                                                         "max_quantity":  null
+                                                                     }
+                                              }
+                     }
+                 ]
+}

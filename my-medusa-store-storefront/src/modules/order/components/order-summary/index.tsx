@@ -7,7 +7,7 @@ type OrderSummaryProps = {
 
 const OrderSummary = ({ order }: OrderSummaryProps) => {
   const getAmount = (amount?: number | null) => {
-    if (!amount) {
+    if (amount === undefined || amount === null) {
       return
     }
 
@@ -18,39 +18,45 @@ const OrderSummary = ({ order }: OrderSummaryProps) => {
   }
 
   return (
-    <div>
-      <h2 className="text-base-semi">Order Summary</h2>
-      <div className="text-small-regular text-ui-fg-base my-2">
-        <div className="flex items-center justify-between text-base-regular text-ui-fg-base mb-2">
+    <div className="border-t border-white/5 pt-8">
+      <h2 className="text-sm font-black uppercase tracking-widest text-white/30 mb-6">Payment Summary</h2>
+      <div className="flex flex-col gap-y-3">
+        <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white/40">
           <span>Subtotal</span>
-          <span>{getAmount(order.subtotal)}</span>
+          <span className="text-white">{getAmount(order.subtotal)}</span>
         </div>
-        <div className="flex flex-col gap-y-1">
-          {order.discount_total > 0 && (
-            <div className="flex items-center justify-between">
-              <span>Discount</span>
-              <span>- {getAmount(order.discount_total)}</span>
-            </div>
-          )}
-          {order.gift_card_total > 0 && (
-            <div className="flex items-center justify-between">
-              <span>Discount</span>
-              <span>- {getAmount(order.gift_card_total)}</span>
-            </div>
-          )}
-          <div className="flex items-center justify-between">
-            <span>Shipping</span>
-            <span>{getAmount(order.shipping_total)}</span>
+
+        {order.discount_total > 0 && (
+          <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-rose-400">
+            <span>Discount</span>
+            <span>- {getAmount(order.discount_total)}</span>
           </div>
-          <div className="flex items-center justify-between">
-            <span>Taxes</span>
-            <span>{getAmount(order.tax_total)}</span>
+        )}
+
+        {order.gift_card_total > 0 && (
+          <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white/40">
+            <span>Gift card</span>
+            <span className="text-white">- {getAmount(order.gift_card_total)}</span>
           </div>
+        )}
+
+        <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white/40">
+          <span>Shipping</span>
+          <span className="text-white">{getAmount(order.shipping_total)}</span>
         </div>
-        <div className="h-px w-full border-b border-gray-200 border-dashed my-4" />
-        <div className="flex items-center justify-between text-base-regular text-ui-fg-base mb-2">
+
+        <div className="flex items-center justify-between text-xs font-bold uppercase tracking-widest text-white/40">
+          <span>Taxes</span>
+          <span className="text-white">{getAmount(order.tax_total)}</span>
+        </div>
+
+        <div className="h-px w-full border-b border-white/5 border-dashed my-2" />
+
+        <div className="flex items-center justify-between text-xl font-black uppercase tracking-tighter text-white">
           <span>Total</span>
-          <span>{getAmount(order.total)}</span>
+          <span className="text-2xl text-transparent bg-clip-text bg-gradient-to-r from-cloudsfit-purple to-cloudsfit-blue">
+            {getAmount(order.total)}
+          </span>
         </div>
       </div>
     </div>
@@ -58,4 +64,3 @@ const OrderSummary = ({ order }: OrderSummaryProps) => {
 }
 
 export default OrderSummary
-

@@ -4,7 +4,9 @@ import React, { createContext, useContext, useEffect, useState } from "react"
 
 interface CartItem {
   id: string
+  variantId: string
   name: string
+  description: string
   price: string
   image: string
   quantity: number
@@ -55,10 +57,10 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   const addItem = (item: CartItem) => {
     setItems((prev) => {
-      const existingItem = prev.find((i) => i.id === item.id && i.size === item.size && i.color === item.color)
+      const existingItem = prev.find((i) => i.variantId === item.variantId)
       if (existingItem) {
         return prev.map((i) =>
-          i.id === item.id && i.size === item.size && i.color === item.color
+          i.variantId === item.variantId
             ? { ...i, quantity: i.quantity + item.quantity }
             : i
         )
@@ -67,17 +69,17 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     })
   }
 
-  const removeItem = (itemId: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== itemId))
+  const removeItem = (variantId: string) => {
+    setItems((prev) => prev.filter((i) => i.variantId !== variantId))
   }
 
-  const updateQuantity = (itemId: string, quantity: number) => {
+  const updateQuantity = (variantId: string, quantity: number) => {
     if (quantity <= 0) {
-      removeItem(itemId)
+      removeItem(variantId)
       return
     }
     setItems((prev) =>
-      prev.map((i) => (i.id === itemId ? { ...i, quantity } : i))
+      prev.map((i) => (i.variantId === variantId ? { ...i, quantity } : i))
     )
   }
 

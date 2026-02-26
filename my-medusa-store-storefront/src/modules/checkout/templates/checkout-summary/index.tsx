@@ -1,9 +1,9 @@
-﻿import { Heading } from "@medusajs/ui"
+import { Heading } from "@medusajs/ui"
 
-import ItemsPreviewTemplate from "@/modules/cart/templates/preview"
-import DiscountCode from "@/modules/checkout/components/discount-code"
-import CartTotals from "@/modules/common/components/cart-totals"
-import Divider from "@/modules/common/components/divider"
+import ItemsPreviewTemplate from "@modules/cart/templates/preview"
+import DiscountCode from "@modules/checkout/components/discount-code"
+import CartTotals from "@modules/common/components/cart-totals"
+import Divider from "@modules/common/components/divider"
 
 const CheckoutSummary = ({ cart }: { cart: any }) => {
   return (
@@ -28,4 +28,3 @@ const CheckoutSummary = ({ cart }: { cart: any }) => {
 }
 
 export default CheckoutSummary
-

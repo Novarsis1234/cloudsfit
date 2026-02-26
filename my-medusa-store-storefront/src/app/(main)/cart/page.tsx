@@ -21,7 +21,6 @@ export default async function Cart() {
   return (
     <>
       <ContextCart />
-      {cart?.items?.length && <CartTemplate cart={cart} customer={customer} />}
     </>
   )
 }

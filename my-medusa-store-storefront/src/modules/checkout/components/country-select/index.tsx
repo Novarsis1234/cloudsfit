@@ -1,8 +1,8 @@
-﻿import { forwardRef, useImperativeHandle, useMemo, useRef } from "react"
+import { forwardRef, useImperativeHandle, useMemo, useRef } from "react"
 
 import NativeSelect, {
   NativeSelectProps,
-} from "@/modules/common/components/native-select"
+} from "@modules/common/components/native-select"
 import { HttpTypes } from "@medusajs/types"
 
 const CountrySelect = forwardRef<
@@ -18,27 +18,22 @@ const CountrySelect = forwardRef<
     () => innerRef.current
   )
 
-  // India-only store - always use IN as the country
   const countryOptions = useMemo(() => {
     if (!region) {
       return []
     }
 
-    // Filter to only show India
-    return region.countries
-      ?.filter((country) => country.iso_2 === "in")
-      .map((country) => ({
-        value: country.iso_2,
-        label: country.display_name,
-      })) || []
+    return region.countries?.map((country) => ({
+      value: country.iso_2,
+      label: country.display_name,
+    }))
   }, [region])
 
   return (
     <NativeSelect
       ref={innerRef}
       placeholder={placeholder}
-      defaultValue={defaultValue || "in"}
-      disabled
+      defaultValue={defaultValue}
       {...props}
     >
       {countryOptions?.map(({ value, label }, index) => (
@@ -53,4 +48,3 @@ const CountrySelect = forwardRef<
 CountrySelect.displayName = "CountrySelect"
 
 export default CountrySelect
-
