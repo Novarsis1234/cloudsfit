@@ -53,7 +53,7 @@ export async function POST(
     const accountCustomer = customers.find((c: any) => c.has_account) || customers[0];
 
     const authIdentities = await authService.listAuthIdentities({
-      id: authIdentityId,
+      id: [authIdentityId],
     });
 
     const existing = authIdentities?.[0];

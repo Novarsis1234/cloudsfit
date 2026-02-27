@@ -8,12 +8,18 @@ module.exports = defineConfig({
 
         http: {
             storeCors: process.env.STORE_CORS!,
-            adminCors: process.env.ADMIN_CORS!,
+            adminCors: `${process.env.ADMIN_CORS || "http://localhost:9000"},${process.env.MEDUSA_BACKEND_URL || "https://cloudsfit-backend.onrender.com"}`,
             authCors: process.env.AUTH_CORS!,
 
             jwtSecret: process.env.JWT_SECRET || "supersecret",
             cookieSecret: process.env.COOKIE_SECRET || "supersecret",
         },
+    },
+
+    admin: {
+        disable: false,
+        path: "/app",
+        backendUrl: process.env.MEDUSA_BACKEND_URL || "https://cloudsfit-backend.onrender.com",
     },
 
     modules: [
@@ -32,7 +38,7 @@ module.exports = defineConfig({
                         options: {
                             clientId: process.env.GOOGLE_CLIENT_ID || "temp",
                             clientSecret: process.env.GOOGLE_CLIENT_SECRET || "temp",
-                            callbackUrl: "http://localhost:8000/auth/callback/google",
+                            callbackUrl: `${process.env.MEDUSA_BACKEND_URL || "http://localhost:9000"}/auth/google/callback`,
                         },
                     },
                 ],
