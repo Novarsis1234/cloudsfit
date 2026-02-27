@@ -334,20 +334,23 @@ export async function initiatePaymentSession(
 
   console.log(`[initiatePaymentSession] Initializing for cart: ${freshCart.id}, provider: ${data.provider_id}`)
   console.log(`[initiatePaymentSession] Cart total: ${freshCart.total}, Currency: ${freshCart.currency_code}`)
+  console.log(`[initiatePaymentSession] Payment Collection ID: ${freshCart.payment_collection?.id || "MISSING"}`)
 
   // Using sdk.client.fetch directly to hit the Medusa v2 Cart Payment Session endpoint
-  // This ensures we pass the cart_id in the body to satisfy the 'cart_id is required' validation error
+  // We include cart_id at the TOP LEVEL of the body as it's often required by Medusa v2 validators 
+  // even if it's in the URL path.
   return sdk.client
     .fetch<any>(
       `/store/carts/${freshCart.id}/payment-sessions`,
       {
         method: "POST",
         body: {
+          cart_id: freshCart.id, // TOP LEVEL
           provider_id: data.provider_id,
           context: (data as any).context || {},
           data: {
             ...(data as any).data,
-            cart_id: freshCart.id, // Explicitly include cart_id as requested by backend error
+            cart_id: freshCart.id, // Also keep in data for plugin compatibility
             extra: {
               id: freshCart.id,
               total: freshCart.total,
