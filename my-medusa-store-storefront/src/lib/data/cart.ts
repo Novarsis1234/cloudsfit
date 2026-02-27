@@ -353,25 +353,19 @@ export async function initiatePaymentSession(
     region_id: freshCart.region_id,
   }
 
-  // Medusa v2 initiation call. 
-  // We pass cleanCart in both 'data' and 'context' because different v2 plugins 
-  // and framework versions look in different places for the cart metadata.
+  // Medusa v2 Store API initiation call. 
+  // IMPORTANT: Medusa v2 Store API for payment-sessions ONLY accepts 'provider_id' and 'data'.
+  // Adding 'context' at the top level causes a "Unrecognized fields: 'context'" 500 error.
+  // The Razorpay plugin is configured to look for the cart data in 'data.extra'.
   return sdk.store.payment
     .initiatePaymentSession(
       freshCart as any,
       {
-        ...data,
+        provider_id: data.provider_id,
         data: {
           ...(data as any).data,
-          cart: cleanCart, // Some plugins look for 'cart'
-          extra: cleanCart, // Razorpay plugin looks for 'extra'
-          cart_id: freshCart.id,
+          extra: cleanCart, // Razorpay plugin specifically looks for 'extra' in the data object
         },
-        context: {
-          ...(data as any).context,
-          cart: cleanCart,
-          extra: cleanCart,
-        }
       },
       {},
       headers
