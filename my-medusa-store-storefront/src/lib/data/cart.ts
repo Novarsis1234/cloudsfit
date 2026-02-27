@@ -346,55 +346,58 @@ export async function initiatePaymentSession(
       phone: (freshCart as any).shipping_address?.phone || (freshCart as any).billing_address?.phone || "9999999999"
     }
 
-    // We create a "clean" cart object for the plugin that is guaranteed to be serializable
-    // We only include essential fields for Razorpay to keep the payload size manageable
+    // Build a simplified cart object for the plugin.
+    // We pass essential fields that the Razorpay plugin needs to identify the cart.
     const cleanCart = {
       id: freshCart.id,
       total: freshCart.total,
       currency_code: freshCart.currency_code,
       email: freshCart.email,
-      shipping_address: {
-        first_name: freshCart.shipping_address?.first_name,
-        last_name: freshCart.shipping_address?.last_name,
-        address_1: freshCart.shipping_address?.address_1,
-        city: freshCart.shipping_address?.city,
-        country_code: freshCart.shipping_address?.country_code,
-        phone: freshCart.shipping_address?.phone,
-      },
-      billing_address: {
-        first_name: freshCart.billing_address?.first_name,
-        last_name: freshCart.billing_address?.last_name,
-        address_1: freshCart.billing_address?.address_1,
-        city: freshCart.billing_address?.city,
-        country_code: freshCart.billing_address?.country_code,
-        phone: freshCart.billing_address?.phone,
-      },
-      customer: {
-        id: customer.id,
-        email: customer.email,
-        phone: customer.phone,
-      },
+      shipping_address: freshCart.shipping_address ? {
+        id: freshCart.shipping_address.id,
+        first_name: freshCart.shipping_address.first_name,
+        last_name: freshCart.shipping_address.last_name,
+        address_1: freshCart.shipping_address.address_1,
+        city: freshCart.shipping_address.city,
+        country_code: freshCart.shipping_address.country_code,
+        phone: freshCart.shipping_address.phone,
+      } : null,
+      billing_address: freshCart.billing_address ? {
+        id: freshCart.billing_address.id,
+        first_name: freshCart.billing_address.first_name,
+        last_name: freshCart.billing_address.last_name,
+        address_1: freshCart.billing_address.address_1,
+        city: freshCart.billing_address.city,
+        country_code: freshCart.billing_address.country_code,
+        phone: freshCart.billing_address.phone,
+      } : null,
+      customer: freshCart.customer ? {
+        id: freshCart.customer.id,
+        email: freshCart.customer.email,
+        phone: freshCart.customer.phone,
+      } : (freshCart.shipping_address?.phone ? {
+        email: freshCart.email,
+        phone: freshCart.shipping_address.phone
+      } : null)
     }
 
-    console.log(`[initiatePaymentSession] CleanCart prepared. Email: ${cleanCart.email}, Phone: ${customer.phone}`)
-
-    console.log(`[initiatePaymentSession] Calling SDK initiatePaymentSession for: ${data.provider_id}`)
-
+    // Prepare initiation data.
+    // We nest the cart in 'extra' as required by the sgftech/payment-razorpay plugin.
     const requestData = {
       provider_id: data.provider_id,
       data: {
         ...(data as any).data,
         extra: cleanCart,
-        cart_id: freshCart.id, // Some plugins look for this at the root of data
+        cart: cleanCart, // Fallback for some versions
+        cart_id: freshCart.id,
+        _ts: Date.now(), // Cache busting
       },
     }
 
-    console.log(`[initiatePaymentSession] Payload:`, JSON.stringify({
-      provider_id: requestData.provider_id,
-      data_extra_id: (requestData.data as any).extra?.id
-    }))
+    console.log(`[initiatePaymentSession] Calling SDK for: ${data.provider_id}, Cart: ${freshCart.id}`)
 
-    // Medusa v2 Store API initiation call. 
+    // Medusa v2 Store API initiation call.
+    // Note: The SDK automatically creates a payment collection if one doesn't exist.
     const result = await sdk.store.payment
       .initiatePaymentSession(
         freshCart as any,
@@ -403,12 +406,11 @@ export async function initiatePaymentSession(
         headers
       )
 
-    console.log(`[initiatePaymentSession] SDK call successful for: ${data.provider_id}`)
+    console.log(`[initiatePaymentSession] SUCCESS for: ${data.provider_id}`)
 
     const cartCacheTag = await getCacheTag("carts")
     revalidateTag(cartCacheTag)
 
-    // Return a safe, serializable object instead of the whole complex SDK response
     return {
       success: true,
       data: {
@@ -417,18 +419,12 @@ export async function initiatePaymentSession(
       }
     }
   } catch (err: any) {
-    console.error(`[initiatePaymentSession] CRASHED for provider: ${data.provider_id}`)
-    console.error(`[initiatePaymentSession] Error:`, err.message || err)
+    const errorMessage = err.message || String(err)
+    console.error(`[initiatePaymentSession] FAILED for ${data.provider_id}:`, errorMessage)
 
-    if (err.response) {
-      console.error(`[initiatePaymentSession] Status:`, err.response.status)
-      console.error(`[initiatePaymentSession] Data:`, JSON.stringify(err.response.data))
-    }
-
-    // Return the error instead of throwing to avoid generic "Server Component Render" error in Next.js
     return {
       success: false,
-      error: err.message || "An unexpected error occurred during payment initiation."
+      error: errorMessage
     }
   }
 }
