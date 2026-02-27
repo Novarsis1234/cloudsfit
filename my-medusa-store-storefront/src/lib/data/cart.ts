@@ -55,7 +55,10 @@ export async function retrieveCart(cartId?: string, fields?: string) {
       }
     )
     console.log(`[retrieveCart] SUCCESS: Cart ${id}, Items: ${cart.items?.length || 0}, Total: ${cart.total}`)
-    return sanitizeUrls(cart)
+    console.log(`[retrieveCart] Sanitizing cart data for: ${id}`)
+    const sanitizedCart = sanitizeUrls(cart)
+    console.log(`[retrieveCart] SUCCESS: Cart ${id}, Items: ${sanitizedCart?.items?.length || 0}, Total: ${sanitizedCart?.total}`)
+    return sanitizedCart
   } catch (error: any) {
     const status = error?.response?.status || error?.status
     const message = String(error?.message || error || "")
@@ -333,22 +336,42 @@ export async function initiatePaymentSession(
   }
 
   console.log(`[initiatePaymentSession] Initializing for cart: ${freshCart.id}, provider: ${data.provider_id}`)
-  console.log(`[initiatePaymentSession] Cart total: ${freshCart.total}, Currency: ${freshCart.currency_code}`)
   console.log(`[initiatePaymentSession] Payment Collection ID: ${freshCart.payment_collection?.id || "MISSING"}`)
 
-  // Re-using the official SDK method which expects the CART OBJECT as the first argument
-  // We pass the freshCart retrieved from the backend to ensure all fields (billing, shipping, etc) are present
-  // The Razorpay plugin specifically looks for the cart in data.extra or context.extra
+  // We create a "clean" cart object for the plugin that is guaranteed to be serializable
+  // The Razorpay plugin needs these specific fields to create an order
+  const cleanCart = {
+    id: freshCart.id,
+    total: freshCart.total,
+    currency_code: freshCart.currency_code,
+    email: freshCart.email,
+    shipping_address: freshCart.shipping_address,
+    billing_address: freshCart.billing_address,
+    items: freshCart.items,
+    shipping_methods: freshCart.shipping_methods,
+    customer: freshCart.customer,
+    region_id: freshCart.region_id,
+  }
+
+  // Medusa v2 initiation call. 
+  // We pass cleanCart in both 'data' and 'context' because different v2 plugins 
+  // and framework versions look in different places for the cart metadata.
   return sdk.store.payment
     .initiatePaymentSession(
-      freshCart as any, // SDK type says StoreCart, but our HttpTypes might be slightly different, so cast to any
+      freshCart as any,
       {
         ...data,
         data: {
           ...(data as any).data,
-          // Explicitly pass cart details in 'extra' to satisfy the Razorpay plugin's expectation
-          extra: freshCart as any,
+          cart: cleanCart, // Some plugins look for 'cart'
+          extra: cleanCart, // Razorpay plugin looks for 'extra'
+          cart_id: freshCart.id,
         },
+        context: {
+          ...(data as any).context,
+          cart: cleanCart,
+          extra: cleanCart,
+        }
       },
       {},
       headers
@@ -363,7 +386,6 @@ export async function initiatePaymentSession(
       console.error(`[initiatePaymentSession] FAILED for provider: ${data.provider_id}`)
       console.error(`[initiatePaymentSession] Error Message:`, err.message || err)
 
-      // Attempt to extract more details from the response if available
       if (err.response) {
         console.error(`[initiatePaymentSession] Response Status:`, err.response.status)
         console.error(`[initiatePaymentSession] Response Data:`, JSON.stringify(err.response.data))
