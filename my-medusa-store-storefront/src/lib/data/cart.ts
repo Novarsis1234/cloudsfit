@@ -54,6 +54,7 @@ export async function retrieveCart(cartId?: string, fields?: string) {
         cache: "no-store", // Temporary disable cache to debug 404
       }
     )
+    console.log(`[retrieveCart] SUCCESS: Cart ${id}, Items: ${cart.items?.length || 0}, Total: ${cart.total}`)
     return sanitizeUrls(cart)
   } catch (error: any) {
     const status = error?.response?.status || error?.status
@@ -336,11 +337,16 @@ export async function initiatePaymentSession(
       freshCart,
       {
         ...data,
-        // Pass the full cart as `extra` in `data`. The patched Razorpay plugin will
-        // read this from `input.data.extra` as a fallback for `input.context.extra`.
+        // Pass essential cart data only to avoid massive object serialization issues
         data: {
           ...(data as any).data,
-          extra: freshCart as any,
+          extra: {
+            id: freshCart.id,
+            total: freshCart.total,
+            currency_code: freshCart.currency_code,
+            email: freshCart.email,
+            shipping_address: freshCart.shipping_address,
+          } as any,
         },
       },
       {},

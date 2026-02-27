@@ -1,6 +1,7 @@
 ﻿import { listCartShippingMethods } from "@/lib/data/fulfillment"
 import { listCartPaymentMethods } from "@/lib/data/payment"
 import { HttpTypes } from "@medusajs/types"
+import { Heading, Text } from "@medusajs/ui"
 import Addresses from "@/modules/checkoutold/components/addresses"
 import Payment from "@/modules/checkoutold/components/payment"
 import Review from "@/modules/checkoutold/components/review"
@@ -17,11 +18,20 @@ export default async function CheckoutForm({
     return null
   }
 
+  console.log(`[CheckoutForm] Rendering for cart: ${cart.id}`)
   const shippingMethods = await listCartShippingMethods(cart.id)
+  console.log(`[CheckoutForm] Found ${shippingMethods?.length || 0} shipping methods`)
   const paymentMethods = await listCartPaymentMethods(cart.region?.id ?? "")
+  console.log(`[CheckoutForm] Found ${paymentMethods?.length || 0} payment methods:`, paymentMethods?.map(m => m.id))
 
   if (!shippingMethods || !paymentMethods) {
-    return null
+    console.warn("[CheckoutForm] Missing shipping or payment methods!")
+    return (
+      <div className="p-8 text-white bg-red-900/20 rounded-2xl border border-red-500/50">
+        <Heading level="h2" className="text-xl mb-4">Checkout Configuration Error</Heading>
+        <Text>Unable to load shipping or payment methods. Please check your backend configuration.</Text>
+      </div>
+    )
   }
 
   return (
