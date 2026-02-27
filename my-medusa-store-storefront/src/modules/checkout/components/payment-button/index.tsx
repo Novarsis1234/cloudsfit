@@ -2,6 +2,7 @@
 
 import { isManual, isStripeLike, isRazorpay } from "@lib/constants"
 import { placeOrder, updatePaymentSession } from "@lib/data/cart"
+import { sdk } from "@lib/config"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@medusajs/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
@@ -223,7 +224,7 @@ const RazorpayPaymentButton = ({
     // Restore scroll on mount
     document.body.style.overflow = "auto"
     document.documentElement.style.overflow = "auto"
-    
+
     // Cleanup on unmount
     return () => {
       document.body.style.overflow = "auto"
@@ -249,7 +250,7 @@ const RazorpayPaymentButton = ({
         const session = cart.payment_collection.payment_sessions?.find(
           (s) => s.status === "pending"
         )
-        
+
         if (session) {
           console.log("Updating payment session with Razorpay payment ID:", razorpayData.razorpay_payment_id)
           await updatePaymentSession(
@@ -285,8 +286,19 @@ const RazorpayPaymentButton = ({
     setErrorMessage(null)
 
     try {
-      const session = cart.payment_collection?.payment_sessions?.find(
-        (s) => s.status === "pending"
+      console.log("Ensuring payment session exists for Razorpay...")
+      // 🔥 Ensure payment session exists and is selected
+      await sdk.store.payment.initiatePaymentSession(cart as any, {
+        provider_id: "pp_razorpay_razorpay",
+      })
+
+      // Refetch updated cart to get the new session
+      const { cart: updatedCart } = await sdk.store.cart.retrieve(cart.id, {
+        fields: "*payment_collection.payment_sessions",
+      })
+
+      const session = updatedCart.payment_collection?.payment_sessions?.find(
+        (s: any) => s.provider_id === "pp_razorpay_razorpay"
       )
 
       if (!session) {
@@ -332,7 +344,7 @@ const RazorpayPaymentButton = ({
           // Explicitly restore scroll in case the handler is called while modal still shutting down
           document.body.style.overflow = "auto"
           document.documentElement.style.overflow = "auto"
-          
+
           // Pass the Razorpay response to onPaymentCompleted
           onPaymentCompleted(response)
         },
@@ -375,7 +387,7 @@ const RazorpayPaymentButton = ({
         document.documentElement.style.overflow = "auto"
         setSubmitting(false)
       })
-      
+
       console.log("Opening Razorpay modal...")
       // Ensure body scroll is enabled before opening modal
       document.body.style.overflow = "auto"

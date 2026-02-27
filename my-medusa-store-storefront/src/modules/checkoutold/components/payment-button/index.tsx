@@ -2,6 +2,7 @@
 
 import { isManual, isRazorpay, isStripeLike } from "@/lib/constants"
 import { initiatePaymentSession, placeOrder } from "@/lib/data/cart"
+import { sdk } from "@/lib/config"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@medusajs/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
@@ -247,18 +248,31 @@ const RazorpayPaymentButton = ({
     setSubmitting(true)
     setErrorMessage(null)
 
-    // If no session yet, create one first
+    // 🔥 Ensure payment session exists and is selected using JS SDK directly
     let activeSession = session
-    if (!activeSession) {
-      try {
-        await initiatePaymentSession(cart, { provider_id: "pp_razorpay_razorpay" })
-        window.location.reload()
-        return
-      } catch (err: any) {
-        setErrorMessage(err.message || "Failed to initiate payment session")
-        setSubmitting(false)
-        return
+    try {
+      console.log("[Razorpay] Ensuring payment session exists...")
+      await sdk.store.payment.initiatePaymentSession(cart as any, {
+        provider_id: "pp_razorpay_razorpay",
+      })
+
+      console.log("[Razorpay] Refetching updated cart...")
+      const { cart: updatedCart } = await sdk.store.cart.retrieve(cart.id, {
+        fields: "*payment_collection.payment_sessions",
+      })
+
+      activeSession = updatedCart.payment_collection?.payment_sessions?.find(
+        (s: any) => s.provider_id === "pp_razorpay_razorpay"
+      )
+
+      if (!activeSession) {
+        throw new Error("Failed to create payment session for Razorpay")
       }
+    } catch (err: any) {
+      console.error("[Razorpay] Error in session initiation:", err)
+      setErrorMessage(err.message || "Failed to initiate payment session")
+      setSubmitting(false)
+      return
     }
 
     if (!cart) {
