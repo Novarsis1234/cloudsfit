@@ -1,7 +1,7 @@
 "use client"
 
 import { isManual, isStripeLike, isRazorpay } from "@lib/constants"
-import { placeOrder, updatePaymentSession } from "@lib/data/cart"
+import { placeOrder, updatePaymentSession, initiatePaymentSession } from "@lib/data/cart"
 import { sdk } from "@lib/config"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@medusajs/ui"

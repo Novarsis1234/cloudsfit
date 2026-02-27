@@ -407,6 +407,69 @@ export async function initiatePaymentSession(
   }
 }
 
+/**
+ * Updates an existing payment session or selects it.
+ * This is used to ensure the backend has the latest cart data before Razorpay checkout.
+ */
+export async function updatePaymentSession(
+  paymentCollectionId: string,
+  providerId: string,
+  data?: any
+) {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  try {
+    const cartId = await getCartId()
+    if (!cartId) throw new Error("No cart found")
+
+    const cart = await retrieveCart(cartId)
+    if (!cart) throw new Error("Unable to retrieve cart")
+
+    console.log(`[updatePaymentSession] Updating session ${providerId} for collection ${paymentCollectionId}`)
+
+    // Create a clean cart for the plugin
+    const customer = (cart as any).customer || {
+      email: cart.email,
+      phone: (cart as any).shipping_address?.phone || (cart as any).billing_address?.phone || "9999999999"
+    }
+
+    const cleanCart = {
+      id: cart.id,
+      total: cart.total,
+      currency_code: cart.currency_code,
+      email: cart.email,
+      shipping_address: cart.shipping_address,
+      billing_address: cart.billing_address,
+      items: cart.items,
+      shipping_methods: cart.shipping_methods,
+      customer: customer,
+      region_id: cart.region_id,
+    }
+
+    // In Medusa v2, we can call initiatePaymentSession on an existing collection to update/select session
+    return await sdk.store.payment.initiatePaymentSession(
+      cart as any,
+      {
+        provider_id: providerId,
+        data: {
+          ...data,
+          extra: cleanCart
+        }
+      },
+      {},
+      headers
+    ).then(async () => {
+      const cartCacheTag = await getCacheTag("carts")
+      revalidateTag(cartCacheTag)
+    })
+  } catch (err: any) {
+    console.error(`[updatePaymentSession] FAILED:`, err.message)
+    // Don't throw, let the caller handle it or proceed to initiate
+  }
+}
+
 export async function applyPromotions(codes: string[]) {
   const cartId = await getCartId()
 
