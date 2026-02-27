@@ -336,32 +336,22 @@ export async function initiatePaymentSession(
   console.log(`[initiatePaymentSession] Cart total: ${freshCart.total}, Currency: ${freshCart.currency_code}`)
   console.log(`[initiatePaymentSession] Payment Collection ID: ${freshCart.payment_collection?.id || "MISSING"}`)
 
-  // Using sdk.client.fetch directly to hit the Medusa v2 Cart Payment Session endpoint
-  // We include cart_id at the TOP LEVEL of the body as it's often required by Medusa v2 validators 
-  // even if it's in the URL path.
-  return sdk.client
-    .fetch<any>(
-      `/store/carts/${freshCart.id}/payment-sessions`,
+  // Re-using the official SDK method which expects the CART OBJECT as the first argument
+  // We pass the freshCart retrieved from the backend to ensure all fields (billing, shipping, etc) are present
+  // The Razorpay plugin specifically looks for the cart in data.extra or context.extra
+  return sdk.store.payment
+    .initiatePaymentSession(
+      freshCart as any, // SDK type says StoreCart, but our HttpTypes might be slightly different, so cast to any
       {
-        method: "POST",
-        body: {
-          cart_id: freshCart.id, // TOP LEVEL
-          provider_id: data.provider_id,
-          context: (data as any).context || {},
-          data: {
-            ...(data as any).data,
-            cart_id: freshCart.id, // Also keep in data for plugin compatibility
-            extra: {
-              id: freshCart.id,
-              total: freshCart.total,
-              currency_code: freshCart.currency_code,
-              email: freshCart.email,
-              shipping_address: freshCart.shipping_address,
-            },
-          },
+        ...data,
+        data: {
+          ...(data as any).data,
+          // Explicitly pass cart details in 'extra' to satisfy the Razorpay plugin's expectation
+          extra: freshCart as any,
         },
-        headers,
-      }
+      },
+      {},
+      headers
     )
     .then(async (resp: any) => {
       console.log(`[initiatePaymentSession] SUCCESS for provider: ${data.provider_id}`)
@@ -371,11 +361,14 @@ export async function initiatePaymentSession(
     })
     .catch((err: any) => {
       console.error(`[initiatePaymentSession] FAILED for provider: ${data.provider_id}`)
-      console.error(`[initiatePaymentSession] Error:`, err.message || err)
+      console.error(`[initiatePaymentSession] Error Message:`, err.message || err)
+
+      // Attempt to extract more details from the response if available
       if (err.response) {
-        console.error(`[initiatePaymentSession] Response status:`, err.response.status)
-        console.error(`[initiatePaymentSession] Response body:`, JSON.stringify(err.response.data))
+        console.error(`[initiatePaymentSession] Response Status:`, err.response.status)
+        console.error(`[initiatePaymentSession] Response Data:`, JSON.stringify(err.response.data))
       }
+
       return medusaError(err)
     })
 }
