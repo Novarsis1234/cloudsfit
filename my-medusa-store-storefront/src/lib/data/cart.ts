@@ -335,25 +335,30 @@ export async function initiatePaymentSession(
   console.log(`[initiatePaymentSession] Initializing for cart: ${freshCart.id}, provider: ${data.provider_id}`)
   console.log(`[initiatePaymentSession] Cart total: ${freshCart.total}, Currency: ${freshCart.currency_code}`)
 
-  return sdk.store.payment
-    .initiatePaymentSession(
-      freshCart.id as any, // FIX: Pass ID string, cast to any in case types are wrong but backend expects ID
+  // Using sdk.client.fetch directly to hit the Medusa v2 Cart Payment Session endpoint
+  // This ensures we pass the cart_id in the body to satisfy the 'cart_id is required' validation error
+  return sdk.client
+    .fetch<any>(
+      `/store/carts/${freshCart.id}/payment-sessions`,
       {
-        ...data,
-        // Pass essential cart data only to avoid massive object serialization issues
-        data: {
-          ...(data as any).data,
-          extra: {
-            id: freshCart.id,
-            total: freshCart.total,
-            currency_code: freshCart.currency_code,
-            email: freshCart.email,
-            shipping_address: freshCart.shipping_address,
-          } as any,
+        method: "POST",
+        body: {
+          provider_id: data.provider_id,
+          context: (data as any).context || {},
+          data: {
+            ...(data as any).data,
+            cart_id: freshCart.id, // Explicitly include cart_id as requested by backend error
+            extra: {
+              id: freshCart.id,
+              total: freshCart.total,
+              currency_code: freshCart.currency_code,
+              email: freshCart.email,
+              shipping_address: freshCart.shipping_address,
+            },
+          },
         },
-      },
-      {},
-      headers
+        headers,
+      }
     )
     .then(async (resp: any) => {
       console.log(`[initiatePaymentSession] SUCCESS for provider: ${data.provider_id}`)
