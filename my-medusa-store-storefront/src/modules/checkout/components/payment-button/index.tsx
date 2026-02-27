@@ -286,11 +286,7 @@ const RazorpayPaymentButton = ({
     setErrorMessage(null)
 
     try {
-      console.log("Ensuring payment session exists for Razorpay...")
-      // 🔥 Ensure payment session exists and is selected using server action wrapper
-      await updatePaymentSession(cart.payment_collection?.id || "", "pp_razorpay_razorpay")
-
-      // If no session exists yet, initiate it
+      // Initiate or update payment session using server action wrapper
       const result = await initiatePaymentSession(cart, {
         provider_id: "pp_razorpay_razorpay",
       })
@@ -299,7 +295,7 @@ const RazorpayPaymentButton = ({
         throw new Error(result?.error || "Failed to initiate payment session with the server.")
       }
 
-      // Refetch updated cart to get the new session
+      // Refetch updated cart to get the session data (order_id from razorpay)
       const { cart: updatedCart } = await sdk.store.cart.retrieve(cart.id, {
         fields: "*payment_collection.payment_sessions",
       })

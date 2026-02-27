@@ -347,32 +347,58 @@ export async function initiatePaymentSession(
     }
 
     // We create a "clean" cart object for the plugin that is guaranteed to be serializable
+    // We only include essential fields for Razorpay to keep the payload size manageable
     const cleanCart = {
       id: freshCart.id,
       total: freshCart.total,
       currency_code: freshCart.currency_code,
       email: freshCart.email,
-      shipping_address: freshCart.shipping_address,
-      billing_address: freshCart.billing_address,
-      items: freshCart.items,
-      shipping_methods: freshCart.shipping_methods,
-      customer: customer,
-      region_id: freshCart.region_id,
+      shipping_address: {
+        first_name: freshCart.shipping_address?.first_name,
+        last_name: freshCart.shipping_address?.last_name,
+        address_1: freshCart.shipping_address?.address_1,
+        city: freshCart.shipping_address?.city,
+        country_code: freshCart.shipping_address?.country_code,
+        phone: freshCart.shipping_address?.phone,
+      },
+      billing_address: {
+        first_name: freshCart.billing_address?.first_name,
+        last_name: freshCart.billing_address?.last_name,
+        address_1: freshCart.billing_address?.address_1,
+        city: freshCart.billing_address?.city,
+        country_code: freshCart.billing_address?.country_code,
+        phone: freshCart.billing_address?.phone,
+      },
+      customer: {
+        id: customer.id,
+        email: customer.email,
+        phone: customer.phone,
+      },
     }
 
     console.log(`[initiatePaymentSession] CleanCart prepared. Email: ${cleanCart.email}, Phone: ${customer.phone}`)
+
+    console.log(`[initiatePaymentSession] Calling SDK initiatePaymentSession for: ${data.provider_id}`)
+
+    const requestData = {
+      provider_id: data.provider_id,
+      data: {
+        ...(data as any).data,
+        extra: cleanCart,
+        cart_id: freshCart.id, // Some plugins look for this at the root of data
+      },
+    }
+
+    console.log(`[initiatePaymentSession] Payload:`, JSON.stringify({
+      provider_id: requestData.provider_id,
+      data_extra_id: (requestData.data as any).extra?.id
+    }))
 
     // Medusa v2 Store API initiation call. 
     const result = await sdk.store.payment
       .initiatePaymentSession(
         freshCart as any,
-        {
-          provider_id: data.provider_id,
-          data: {
-            ...(data as any).data,
-            extra: cleanCart, // Razorpay plugin specifically looks for 'extra' in the data object
-          },
-        },
+        requestData,
         {},
         headers
       )
@@ -440,12 +466,27 @@ export async function updatePaymentSession(
       total: cart.total,
       currency_code: cart.currency_code,
       email: cart.email,
-      shipping_address: cart.shipping_address,
-      billing_address: cart.billing_address,
-      items: cart.items,
-      shipping_methods: cart.shipping_methods,
-      customer: customer,
-      region_id: cart.region_id,
+      shipping_address: {
+        first_name: cart.shipping_address?.first_name,
+        last_name: cart.shipping_address?.last_name,
+        address_1: cart.shipping_address?.address_1,
+        city: cart.shipping_address?.city,
+        country_code: cart.shipping_address?.country_code,
+        phone: cart.shipping_address?.phone,
+      },
+      billing_address: {
+        first_name: cart.billing_address?.first_name,
+        last_name: cart.billing_address?.last_name,
+        address_1: cart.billing_address?.address_1,
+        city: cart.billing_address?.city,
+        country_code: cart.billing_address?.country_code,
+        phone: cart.billing_address?.phone,
+      },
+      customer: {
+        id: customer.id,
+        email: customer.email,
+        phone: customer.phone,
+      },
     }
 
     // In Medusa v2, we can call initiatePaymentSession on an existing collection to update/select session
@@ -455,7 +496,8 @@ export async function updatePaymentSession(
         provider_id: providerId,
         data: {
           ...data,
-          extra: cleanCart
+          extra: cleanCart,
+          cart_id: cart.id
         }
       },
       {},
