@@ -15,6 +15,7 @@ import {
 } from "./cookies"
 import { getRegion } from "./regions"
 import { getLocale } from "@/lib/data/locale-actions"
+import { sanitizeUrls } from "@/lib/util/urls"
 
 /**
  * Retrieves a cart by its ID. If no ID is provided, it will use the cart ID from the cookies.
@@ -53,7 +54,7 @@ export async function retrieveCart(cartId?: string, fields?: string) {
         cache: "no-store", // Temporary disable cache to debug 404
       }
     )
-    return cart
+    return sanitizeUrls(cart)
   } catch (error: any) {
     const status = error?.response?.status || error?.status
     const message = String(error?.message || error || "")
@@ -663,4 +664,3 @@ export async function listCartOptions() {
     cache: "force-cache",
   })
 }
-

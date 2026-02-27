@@ -195,20 +195,25 @@ const RazorpayPaymentButton = ({
   const hasAutoStartedRef = useRef(false)
 
   const onPaymentCompleted = async () => {
+    console.log("[Razorpay] Starting onPaymentCompleted...")
     try {
+      console.log("[Razorpay] Calling placeOrder...")
       await placeOrder()
+      console.log("[Razorpay] placeOrder successful")
       // placeOrder does a server redirect; if we get here something went wrong
       setErrorMessage("Order placement failed. Please contact support.")
       setSubmitting(false)
     } catch (err: any) {
+      console.log("[Razorpay] Caught error in onPaymentCompleted:", err)
       // Next.js redirect() throws a special error — it's intentional, not a failure
       // If the message contains NEXT_REDIRECT it means the redirect is happening
       if (err?.message?.includes("NEXT_REDIRECT") || err?.digest?.includes("NEXT_REDIRECT")) {
+        console.log("[Razorpay] Redirecting to confirmation page...")
         // Let the redirect happen — do nothing
         return
       }
       // For real errors, show the message and navigate to account/orders as fallback
-      console.error("[Razorpay] placeOrder error:", err)
+      console.error("[Razorpay] placeOrder real error:", err)
       setErrorMessage(err.message || "Order placement failed")
       setSubmitting(false)
     }
@@ -217,7 +222,6 @@ const RazorpayPaymentButton = ({
   const session = cart.payment_collection?.payment_sessions?.find(
     (s) => s.status === "pending" && isRazorpay(s.provider_id)
   )
-
 
   const waitForRazorpay = (): Promise<any> => {
     return new Promise((resolve, reject) => {
@@ -399,4 +403,3 @@ const ManualTestPaymentButton = ({ notReady }: { notReady: boolean }) => {
 }
 
 export default PaymentButton
-

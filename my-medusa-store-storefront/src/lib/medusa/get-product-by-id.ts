@@ -2,7 +2,7 @@ import { getRegion } from "@/lib/data/regions"
 import { mapSingleMedusaProduct, MedusaProduct } from "./mappers"
 
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || ""
-const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"
+const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "https://cloudsfit-backend.onrender.com"
 
 async function fetchProductById(productId: string, extraParams: Record<string, string> = {}): Promise<any> {
   const query = new URLSearchParams({

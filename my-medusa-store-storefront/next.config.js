@@ -35,11 +35,11 @@ const nextConfig = {
       },
       {
         protocol: "https",
-        hostname: "medusa-server-testing.s3.us-east-1.amazonaws.com",
+        hostname: "images.unsplash.com",
       },
       {
         protocol: "https",
-        hostname: "images.unsplash.com",
+        hostname: "cloudsfit-backend.onrender.com",
       },
       ...(S3_HOSTNAME && S3_PATHNAME
         ? [

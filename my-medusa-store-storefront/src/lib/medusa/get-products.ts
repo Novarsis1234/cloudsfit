@@ -3,7 +3,7 @@ import { getRegion } from "@/lib/data/regions"
 import { mapSingleMedusaProduct, MedusaProduct } from "./mappers"
 
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || ""
-const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "http://localhost:9000"
+const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL || "https://cloudsfit-backend.onrender.com"
 
 // Direct fetch helper — bypasses SDK wrapper to avoid "Missing required pricing context" suppression
 async function fetchProducts(params: Record<string, string | string[]>): Promise<any[]> {

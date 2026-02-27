@@ -31,6 +31,10 @@ const Payment = ({
     activeSession?.provider_id ?? ""
   )
 
+  console.log("[Payment] activeSession:", activeSession)
+  console.log("[Payment] availablePaymentMethods:", availablePaymentMethods)
+  console.log("[Payment] selectedPaymentMethod:", selectedPaymentMethod)
+
   useEffect(() => {
     if (!selectedPaymentMethod && availablePaymentMethods?.length) {
       const razorpayMethod = availablePaymentMethods.find(m => m && isRazorpay(m.id))
@@ -61,9 +65,13 @@ const Payment = ({
     }
 
     if (!hasActiveSession && (isStripeLike(method) || isRazorpay(method))) {
-      await initiatePaymentSession(cart, {
-        provider_id: method,
-      })
+      try {
+        await initiatePaymentSession(cart, {
+          provider_id: method,
+        })
+      } catch (err: any) {
+        setError(err.message || "Failed to initiate payment. Please try again.")
+      }
     }
   }
 

@@ -8,7 +8,7 @@ import { getCacheOptions } from "./cookies"
 const BACKEND_URL =
   process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL ||
   process.env.MEDUSA_BACKEND_URL ||
-  "http://localhost:9000"
+  "https://cloudsfit-backend.onrender.com"
 
 const PUBLISHABLE_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY || ""
 const FALLBACK_REGION_ID =

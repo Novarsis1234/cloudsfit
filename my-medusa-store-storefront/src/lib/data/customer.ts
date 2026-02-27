@@ -14,6 +14,7 @@ import {
   removeCartId,
   setAuthToken,
 } from "./cookies"
+import { sanitizeUrls } from "@/lib/util/urls"
 
 export const retrieveCustomer =
   async (): Promise<HttpTypes.StoreCustomer | null> => {
@@ -39,7 +40,7 @@ export const retrieveCustomer =
         next,
         cache: "force-cache",
       })
-      .then(({ customer }) => customer)
+      .then(({ customer }) => sanitizeUrls(customer))
       .catch(() => null)
   }
 
@@ -249,4 +250,3 @@ export const updateCustomerAddress = async (
       return { success: false, error: err.toString() }
     })
 }
-
