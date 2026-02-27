@@ -332,9 +332,12 @@ export async function initiatePaymentSession(
     ...(await getAuthHeaders()),
   }
 
+  console.log(`[initiatePaymentSession] Initializing for cart: ${freshCart.id}, provider: ${data.provider_id}`)
+  console.log(`[initiatePaymentSession] Cart total: ${freshCart.total}, Currency: ${freshCart.currency_code}`)
+
   return sdk.store.payment
     .initiatePaymentSession(
-      freshCart,
+      freshCart.id as any, // FIX: Pass ID string, cast to any in case types are wrong but backend expects ID
       {
         ...data,
         // Pass essential cart data only to avoid massive object serialization issues
@@ -353,6 +356,7 @@ export async function initiatePaymentSession(
       headers
     )
     .then(async (resp: any) => {
+      console.log(`[initiatePaymentSession] SUCCESS for provider: ${data.provider_id}`)
       const cartCacheTag = await getCacheTag("carts")
       revalidateTag(cartCacheTag)
       return resp
@@ -360,6 +364,10 @@ export async function initiatePaymentSession(
     .catch((err: any) => {
       console.error(`[initiatePaymentSession] FAILED for provider: ${data.provider_id}`)
       console.error(`[initiatePaymentSession] Error:`, err.message || err)
+      if (err.response) {
+        console.error(`[initiatePaymentSession] Response status:`, err.response.status)
+        console.error(`[initiatePaymentSession] Response body:`, JSON.stringify(err.response.data))
+      }
       return medusaError(err)
     })
 }
