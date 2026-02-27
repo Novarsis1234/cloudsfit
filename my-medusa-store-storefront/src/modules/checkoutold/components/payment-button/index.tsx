@@ -248,13 +248,17 @@ const RazorpayPaymentButton = ({
     setSubmitting(true)
     setErrorMessage(null)
 
-    // 🔥 Ensure payment session exists and is selected using JS SDK directly
+    // 🔥 Ensure payment session exists and is selected using server action wrapper
     let activeSession = session
     try {
       console.log("[Razorpay] Ensuring payment session exists...")
-      await initiatePaymentSession(cart, {
+      const result = await initiatePaymentSession(cart, {
         provider_id: "pp_razorpay_razorpay",
       })
+
+      if (!result || !result.success) {
+        throw new Error(result?.error || "Failed to initiate payment session with the server.")
+      }
 
       console.log("[Razorpay] Session initiated, refetching cart...")
       // Re-fetch updated cart using SDK to get the new session for the modal

@@ -291,9 +291,13 @@ const RazorpayPaymentButton = ({
       await updatePaymentSession(cart.payment_collection?.id || "", "pp_razorpay_razorpay")
 
       // If no session exists yet, initiate it
-      await initiatePaymentSession(cart, {
+      const result = await initiatePaymentSession(cart, {
         provider_id: "pp_razorpay_razorpay",
       })
+
+      if (!result || !result.success) {
+        throw new Error(result?.error || "Failed to initiate payment session with the server.")
+      }
 
       // Refetch updated cart to get the new session
       const { cart: updatedCart } = await sdk.store.cart.retrieve(cart.id, {

@@ -324,69 +324,87 @@ export async function initiatePaymentSession(
   cart: HttpTypes.StoreCart,
   data: HttpTypes.StoreInitializePaymentSession
 ) {
-  // Always use a fresh cart from the backend to avoid stale data
-  const freshCart = await retrieveCart(cart.id)
+  try {
+    // Always use a fresh cart from the backend to avoid stale data
+    const freshCart = await retrieveCart(cart.id)
 
-  if (!freshCart) {
-    throw new Error("Unable to retrieve fresh cart for payment session initiation.")
-  }
+    if (!freshCart) {
+      return { success: false, error: "Unable to retrieve fresh cart." }
+    }
 
-  const headers = {
-    ...(await getAuthHeaders()),
-  }
+    const headers = {
+      ...(await getAuthHeaders()),
+    }
 
-  console.log(`[initiatePaymentSession] Initializing for cart: ${freshCart.id}, provider: ${data.provider_id}`)
-  console.log(`[initiatePaymentSession] Payment Collection ID: ${freshCart.payment_collection?.id || "MISSING"}`)
+    console.log(`[initiatePaymentSession] Initializing for cart: ${freshCart.id}, provider: ${data.provider_id}`)
 
-  // We create a "clean" cart object for the plugin that is guaranteed to be serializable
-  // The Razorpay plugin needs these specific fields to create an order
-  const cleanCart = {
-    id: freshCart.id,
-    total: freshCart.total,
-    currency_code: freshCart.currency_code,
-    email: freshCart.email,
-    shipping_address: freshCart.shipping_address,
-    billing_address: freshCart.billing_address,
-    items: freshCart.items,
-    shipping_methods: freshCart.shipping_methods,
-    customer: (freshCart as any).customer,
-    region_id: freshCart.region_id,
-  }
+    // Defensive check: Razorpay plugin crashes if guest customer has no object
+    const customer = (freshCart as any).customer || {
+      email: freshCart.email,
+      first_name: (freshCart as any).shipping_address?.first_name || "Guest",
+      last_name: (freshCart as any).shipping_address?.last_name || "User",
+      phone: (freshCart as any).shipping_address?.phone || (freshCart as any).billing_address?.phone || "9999999999"
+    }
 
-  // Medusa v2 Store API initiation call. 
-  // IMPORTANT: Medusa v2 Store API for payment-sessions ONLY accepts 'provider_id' and 'data'.
-  // Adding 'context' at the top level causes a "Unrecognized fields: 'context'" 500 error.
-  // The Razorpay plugin is configured to look for the cart data in 'data.extra'.
-  return sdk.store.payment
-    .initiatePaymentSession(
-      freshCart as any,
-      {
-        provider_id: data.provider_id,
-        data: {
-          ...(data as any).data,
-          extra: cleanCart, // Razorpay plugin specifically looks for 'extra' in the data object
+    // We create a "clean" cart object for the plugin that is guaranteed to be serializable
+    const cleanCart = {
+      id: freshCart.id,
+      total: freshCart.total,
+      currency_code: freshCart.currency_code,
+      email: freshCart.email,
+      shipping_address: freshCart.shipping_address,
+      billing_address: freshCart.billing_address,
+      items: freshCart.items,
+      shipping_methods: freshCart.shipping_methods,
+      customer: customer,
+      region_id: freshCart.region_id,
+    }
+
+    console.log(`[initiatePaymentSession] CleanCart prepared. Email: ${cleanCart.email}, Phone: ${customer.phone}`)
+
+    // Medusa v2 Store API initiation call. 
+    const result = await sdk.store.payment
+      .initiatePaymentSession(
+        freshCart as any,
+        {
+          provider_id: data.provider_id,
+          data: {
+            ...(data as any).data,
+            extra: cleanCart, // Razorpay plugin specifically looks for 'extra' in the data object
+          },
         },
-      },
-      {},
-      headers
-    )
-    .then(async (resp: any) => {
-      console.log(`[initiatePaymentSession] SUCCESS for provider: ${data.provider_id}`)
-      const cartCacheTag = await getCacheTag("carts")
-      revalidateTag(cartCacheTag)
-      return resp
-    })
-    .catch((err: any) => {
-      console.error(`[initiatePaymentSession] FAILED for provider: ${data.provider_id}`)
-      console.error(`[initiatePaymentSession] Error Message:`, err.message || err)
+        {},
+        headers
+      )
 
-      if (err.response) {
-        console.error(`[initiatePaymentSession] Response Status:`, err.response.status)
-        console.error(`[initiatePaymentSession] Response Data:`, JSON.stringify(err.response.data))
+    console.log(`[initiatePaymentSession] SDK call successful for: ${data.provider_id}`)
+
+    const cartCacheTag = await getCacheTag("carts")
+    revalidateTag(cartCacheTag)
+
+    // Return a safe, serializable object instead of the whole complex SDK response
+    return {
+      success: true,
+      data: {
+        id: (result as any).payment_collection?.id,
+        payment_sessions: (result as any).payment_collection?.payment_sessions
       }
+    }
+  } catch (err: any) {
+    console.error(`[initiatePaymentSession] CRASHED for provider: ${data.provider_id}`)
+    console.error(`[initiatePaymentSession] Error:`, err.message || err)
 
-      return medusaError(err)
-    })
+    if (err.response) {
+      console.error(`[initiatePaymentSession] Status:`, err.response.status)
+      console.error(`[initiatePaymentSession] Data:`, JSON.stringify(err.response.data))
+    }
+
+    // Return the error instead of throwing to avoid generic "Server Component Render" error in Next.js
+    return {
+      success: false,
+      error: err.message || "An unexpected error occurred during payment initiation."
+    }
+  }
 }
 
 export async function applyPromotions(codes: string[]) {
