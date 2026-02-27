@@ -252,11 +252,12 @@ const RazorpayPaymentButton = ({
     let activeSession = session
     try {
       console.log("[Razorpay] Ensuring payment session exists...")
-      await sdk.store.payment.initiatePaymentSession(cart as any, {
+      await initiatePaymentSession(cart, {
         provider_id: "pp_razorpay_razorpay",
       })
 
-      console.log("[Razorpay] Refetching updated cart...")
+      console.log("[Razorpay] Session initiated, refetching cart...")
+      // Re-fetch updated cart using SDK to get the new session for the modal
       const { cart: updatedCart } = await sdk.store.cart.retrieve(cart.id, {
         fields: "*payment_collection.payment_sessions",
       })

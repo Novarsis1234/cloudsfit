@@ -349,7 +349,7 @@ export async function initiatePaymentSession(
     billing_address: freshCart.billing_address,
     items: freshCart.items,
     shipping_methods: freshCart.shipping_methods,
-    customer: freshCart.customer,
+    customer: (freshCart as any).customer,
     region_id: freshCart.region_id,
   }
 

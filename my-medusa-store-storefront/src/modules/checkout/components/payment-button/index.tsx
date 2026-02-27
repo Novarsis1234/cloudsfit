@@ -287,8 +287,11 @@ const RazorpayPaymentButton = ({
 
     try {
       console.log("Ensuring payment session exists for Razorpay...")
-      // 🔥 Ensure payment session exists and is selected
-      await sdk.store.payment.initiatePaymentSession(cart as any, {
+      // 🔥 Ensure payment session exists and is selected using server action wrapper
+      await updatePaymentSession(cart.payment_collection?.id || "", "pp_razorpay_razorpay")
+
+      // If no session exists yet, initiate it
+      await initiatePaymentSession(cart, {
         provider_id: "pp_razorpay_razorpay",
       })
 
