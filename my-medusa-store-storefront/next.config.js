@@ -41,6 +41,11 @@ const nextConfig = {
         protocol: "https",
         hostname: "cloudsfit-backend.onrender.com",
       },
+      {
+  protocol: "https",
+  hostname: "tdoqnuzcckgocbejmvvn.supabase.co",
+},
+
       ...(S3_HOSTNAME && S3_PATHNAME
         ? [
           {
