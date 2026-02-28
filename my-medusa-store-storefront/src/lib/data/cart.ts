@@ -383,8 +383,8 @@ export async function initiatePaymentSession(
 
     // Prepare initiation data.
     // We nest the cart in 'extra' as required by the sgftech/payment-razorpay plugin.
-    // We pass it in both 'data' and 'context' to be safe across different plugin versions.
-    const requestData = {
+    // NOTE: Removed top-level 'context' as it causes 400 errors in v2 Store API.
+    const body = {
       provider_id: data.provider_id,
       data: {
         ...(data as any).data,
@@ -392,24 +392,36 @@ export async function initiatePaymentSession(
         cart: cleanCart, // Fallback for some versions
         cart_id: freshCart.id,
         _ts: Date.now(), // Cache busting
+        // Some older plugins look for 'extra' in a nested 'context' inside 'data'
+        context: {
+          extra: cleanCart,
+          customer: customer,
+        }
       },
-      context: {
-        extra: cleanCart,
-        customer: customer,
-      }
     }
 
-    console.log(`[initiatePaymentSession] Calling SDK for: ${data.provider_id}, Cart: ${freshCart.id}`)
+    console.log(`[initiatePaymentSession] Calling Backend for: ${data.provider_id}, Cart: ${freshCart.id}`)
 
-    // Medusa v2 Store API initiation call.
-    // Note: The SDK automatically creates a payment collection if one doesn't exist.
-    const result = await sdk.store.payment
-      .initiatePaymentSession(
-        freshCart as any,
-        requestData as any,
-        {},
-        headers
-      )
+    // Use direct fetch to ensure no SDK overhead and full control over the body structure
+    let paymentCollectionId = (freshCart as any).payment_collection?.id
+    if (!paymentCollectionId) {
+      console.log(`[initiatePaymentSession] Creating payment collection for cart: ${freshCart.id}`)
+      const { payment_collection } = await sdk.client.fetch<any>(`/store/payment-collections`, {
+        method: "POST",
+        headers,
+        body: { cart_id: freshCart.id },
+      })
+      paymentCollectionId = payment_collection.id
+    }
+
+    const { payment_collection: updatedCollection } = await sdk.client.fetch<any>(
+      `/store/payment-collections/${paymentCollectionId}/payment-sessions`,
+      {
+        method: "POST",
+        headers,
+        body,
+      }
+    )
 
     console.log(`[initiatePaymentSession] SUCCESS for: ${data.provider_id}`)
 
@@ -419,8 +431,8 @@ export async function initiatePaymentSession(
     return {
       success: true,
       data: {
-        id: (result as any).payment_collection?.id,
-        payment_sessions: (result as any).payment_collection?.payment_sessions
+        id: updatedCollection.id,
+        payment_sessions: updatedCollection.payment_sessions
       }
     }
   } catch (err: any) {
@@ -498,11 +510,9 @@ export async function updatePaymentSession(
         data: {
           ...data,
           extra: cleanCart,
-          cart_id: cart.id
-        },
-        context: {
-          extra: cleanCart,
-          customer: {
+          cart_id: cart.id,
+          // Removed top-level context, but passing nested info in data
+          customer_details: {
             id: customer.id,
             email: customer.email,
             phone: customer.phone,
