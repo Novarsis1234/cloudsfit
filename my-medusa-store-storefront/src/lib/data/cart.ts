@@ -383,6 +383,7 @@ export async function initiatePaymentSession(
 
     // Prepare initiation data.
     // We nest the cart in 'extra' as required by the sgftech/payment-razorpay plugin.
+    // We pass it in both 'data' and 'context' to be safe across different plugin versions.
     const requestData = {
       provider_id: data.provider_id,
       data: {
@@ -392,6 +393,10 @@ export async function initiatePaymentSession(
         cart_id: freshCart.id,
         _ts: Date.now(), // Cache busting
       },
+      context: {
+        extra: cleanCart,
+        customer: customer,
+      }
     }
 
     console.log(`[initiatePaymentSession] Calling SDK for: ${data.provider_id}, Cart: ${freshCart.id}`)
@@ -401,7 +406,7 @@ export async function initiatePaymentSession(
     const result = await sdk.store.payment
       .initiatePaymentSession(
         freshCart as any,
-        requestData,
+        requestData as any,
         {},
         headers
       )
@@ -494,8 +499,16 @@ export async function updatePaymentSession(
           ...data,
           extra: cleanCart,
           cart_id: cart.id
+        },
+        context: {
+          extra: cleanCart,
+          customer: {
+            id: customer.id,
+            email: customer.email,
+            phone: customer.phone,
+          }
         }
-      },
+      } as any,
       {},
       headers
     ).then(async () => {
