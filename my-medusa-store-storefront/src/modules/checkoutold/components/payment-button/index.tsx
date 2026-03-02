@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { isManual, isRazorpay, isStripeLike } from "@/lib/constants"
 import { initiatePaymentSession, placeOrder } from "@/lib/data/cart"
@@ -29,8 +29,7 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
     !cart ||
     !cart.shipping_address ||
     !cart.billing_address ||
-    !cart.email ||
-    (cart.shipping_methods?.length ?? 0) < 1
+    !cart.email
 
   const paymentSession = cart.payment_collection?.payment_sessions?.[0]
 
