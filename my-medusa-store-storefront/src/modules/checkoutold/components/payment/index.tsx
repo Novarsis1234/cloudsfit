@@ -36,7 +36,7 @@ const Payment = ({
   console.log("[Payment] selectedPaymentMethod:", selectedPaymentMethod)
 
   useEffect(() => {
-    if (!selectedPaymentMethod && availablePaymentMethods?.length) {
+    if (!selectedPaymentMethod && availablePaymentMethods?.length && cart?.email) {
       const razorpayMethod = availablePaymentMethods.find(m => m && isRazorpay(m.id))
       if (razorpayMethod) {
         setPaymentMethod(razorpayMethod.id)
@@ -44,7 +44,7 @@ const Payment = ({
         setSelectedPaymentMethod(availablePaymentMethods[0].id)
       }
     }
-  }, [availablePaymentMethods, selectedPaymentMethod])
+  }, [availablePaymentMethods, selectedPaymentMethod, cart?.email])
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -56,10 +56,15 @@ const Payment = ({
     setError(null)
     setSelectedPaymentMethod(method)
 
+    if (!cart?.email) {
+      // Cart not ready yet (no email), just set the choice.
+      // initiation will happen once the cart is updated with an email.
+      return
+    }
+
     const hasActiveSession = cart.payment_collection?.payment_sessions?.some(
       (s: any) => s.provider_id === method && s.status === "pending"
     )
-
 
     if (!hasActiveSession && (isStripeLike(method) || isRazorpay(method))) {
       try {
