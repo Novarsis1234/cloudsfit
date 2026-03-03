@@ -25,7 +25,7 @@ import { sanitizeUrls } from "@/lib/util/urls"
 export async function retrieveCart(cartId?: string, fields?: string) {
   const id = cartId || (await getCartId())
   fields ??=
-    "*items, *region, *payment_collection, *payment_collection.payment_sessions, *shipping_address, *billing_address, *customer, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
+    "*items, *region, *payment_collection, *payment_collection.payment_sessions, *shipping_address, *billing_address, *customer, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, *shipping_methods"
 
   if (!id) {
     console.log("[retrieveCart] No cart ID found in cookies or provided.")
@@ -355,6 +355,11 @@ export async function initiatePaymentSession(
     if (!freshCart) {
       return { success: false, error: "Unable to retrieve fresh cart." }
     }
+
+    console.log(`[initiatePaymentSession] Fresh cart retrieved: ${freshCart.id}`)
+    console.log(`[initiatePaymentSession] Email: ${freshCart.email}`)
+    console.log(`[initiatePaymentSession] Shipping Methods: ${JSON.stringify((freshCart as any).shipping_methods?.map((m: any) => m.id))}`)
+    console.log(`[initiatePaymentSession] Shipping Address present: ${!!freshCart.shipping_address}`)
 
     const headers = {
       ...(await getAuthHeaders()),
