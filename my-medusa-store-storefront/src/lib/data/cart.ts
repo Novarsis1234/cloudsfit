@@ -360,10 +360,40 @@ export async function initiatePaymentSession(
     console.log(`[initiatePaymentSession] Email: ${freshCart.email}`)
     console.log(`[initiatePaymentSession] Shipping Methods: ${JSON.stringify((freshCart as any).shipping_methods?.map((m: any) => m.id))}`)
     console.log(`[initiatePaymentSession] Shipping Address present: ${!!freshCart.shipping_address}`)
+    console.log(`[initiatePaymentSession] Billing Address present: ${!!freshCart.billing_address}`)
 
     const headers = {
       ...(await getAuthHeaders()),
     }
+
+    // ── Pre-payment fix: Ensure Billing Address exists ──────────────────────
+    // Razorpay plugins often require a billing address to be present on the cart
+    // object even if it's identical to shipping.
+    if (!freshCart.billing_address && freshCart.shipping_address) {
+      console.log(`[initiatePaymentSession] Billing address missing. Cloning from shipping...`)
+      try {
+        await sdk.store.cart.update(
+          freshCart.id,
+          {
+            billing_address: {
+              first_name: freshCart.shipping_address.first_name,
+              last_name: freshCart.shipping_address.last_name,
+              address_1: freshCart.shipping_address.address_1,
+              city: freshCart.shipping_address.city,
+              country_code: freshCart.shipping_address.country_code,
+              postal_code: freshCart.shipping_address.postal_code,
+              phone: freshCart.shipping_address.phone,
+            },
+          },
+          {},
+          headers
+        )
+        console.log(`[initiatePaymentSession] Billing address cloned successfully.`)
+      } catch (billErr: any) {
+        console.warn(`[initiatePaymentSession] Failed to clone billing address:`, billErr.message)
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
     // ── Auto-attach shipping method if cart has none ────────────────────────
     // The Razorpay plugin returns "cart not ready" when the cart has no
