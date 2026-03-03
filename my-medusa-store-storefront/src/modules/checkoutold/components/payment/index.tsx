@@ -36,15 +36,20 @@ const Payment = ({
   console.log("[Payment] selectedPaymentMethod:", selectedPaymentMethod)
 
   useEffect(() => {
-    if (!selectedPaymentMethod && availablePaymentMethods?.length && cart?.email) {
+    const isCartReadyAction = cart?.email && cart?.shipping_address?.first_name
+
+    if (!selectedPaymentMethod && availablePaymentMethods?.length && isCartReadyAction) {
       const razorpayMethod = availablePaymentMethods.find(m => m && isRazorpay(m.id))
+      console.log("[Payment] Cart is ready, auto-setting method:", razorpayMethod?.id || availablePaymentMethods[0].id)
       if (razorpayMethod) {
         setPaymentMethod(razorpayMethod.id)
       } else if (availablePaymentMethods[0]) {
         setSelectedPaymentMethod(availablePaymentMethods[0].id)
       }
+    } else if (!isCartReadyAction && isOpen) {
+      console.log("[Payment] Component open but cart not ready yet. Email:", !!cart?.email, "Address:", !!cart?.shipping_address?.first_name)
     }
-  }, [availablePaymentMethods, selectedPaymentMethod, cart?.email])
+  }, [availablePaymentMethods, selectedPaymentMethod, cart?.email, cart?.shipping_address, isOpen])
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -56,9 +61,8 @@ const Payment = ({
     setError(null)
     setSelectedPaymentMethod(method)
 
-    if (!cart?.email) {
-      // Cart not ready yet (no email), just set the choice.
-      // initiation will happen once the cart is updated with an email.
+    if (!cart?.email || !cart?.shipping_address?.first_name) {
+      console.log("[Payment] setPaymentMethod called but cart is missing details. Email:", !!cart?.email, "Address:", !!cart?.shipping_address?.first_name)
       return
     }
 
