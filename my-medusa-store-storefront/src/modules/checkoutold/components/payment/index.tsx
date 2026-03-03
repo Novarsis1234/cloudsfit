@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { RadioGroup } from "@headlessui/react"
 import { isRazorpay, isStripeLike, paymentInfoMap } from "@/lib/constants"
@@ -60,9 +60,6 @@ const Payment = ({
       (s: any) => s.provider_id === method && s.status === "pending"
     )
 
-    if (!cart?.shipping_methods?.length) {
-      return
-    }
 
     if (!hasActiveSession && (isStripeLike(method) || isRazorpay(method))) {
       try {
@@ -79,7 +76,7 @@ const Payment = ({
     cart?.gift_cards && cart?.gift_cards?.length > 0 && cart?.total === 0
 
   const paymentReady =
-    (activeSession && cart?.shipping_methods.length !== 0) || paidByGiftcard
+    activeSession || paidByGiftcard
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
