@@ -370,8 +370,8 @@ export async function initiatePaymentSession(
     console.log(`[initiatePaymentSession] Syncing cart readiness: ${freshCart.id}`)
     await sdk.store.cart.update(freshCart.id, {
       email: freshCart.email,
-      shipping_address: { ...freshCart.shipping_address, phone: shippingPhone, country_code: "IN" },
-      billing_address: { ...freshCart.shipping_address, phone: shippingPhone, country_code: "IN" }
+      shipping_address: { ...freshCart.shipping_address, phone: shippingPhone, country_code: "in" },
+      billing_address: { ...freshCart.shipping_address, phone: shippingPhone, country_code: "in" }
     }, {}, headers)
 
     // Wait for address propagation
@@ -418,8 +418,8 @@ export async function initiatePaymentSession(
       ...freshCart,
       currency_code: currency,
       region: freshCart.region ? { ...freshCart.region, currency_code: currency } : null,
-      shipping_address: { ...freshCart.shipping_address, phone: shippingPhone, country_code: "IN" },
-      billing_address: { ...freshCart.shipping_address, phone: shippingPhone, country_code: "IN" },
+      shipping_address: { ...freshCart.shipping_address, phone: shippingPhone, country_code: "in" },
+      billing_address: { ...freshCart.shipping_address, phone: shippingPhone, country_code: "in" },
       customer
     }
 
