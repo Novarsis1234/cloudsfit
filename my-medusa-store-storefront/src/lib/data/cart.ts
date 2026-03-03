@@ -349,155 +349,80 @@ export async function initiatePaymentSession(
   data: HttpTypes.StoreInitializePaymentSession
 ) {
   try {
-    // Always use a fresh cart from the backend to avoid stale data
-    const freshCart = await retrieveCart(cart.id)
+    // 1. Get a fresh cart and prepare headers
+    let freshCart = await retrieveCart(cart.id)
+    if (!freshCart) return { success: false, error: "Unable to retrieve fresh cart." }
 
-    if (!freshCart) {
-      return { success: false, error: "Unable to retrieve fresh cart." }
-    }
+    const headers = { ...(await getAuthHeaders()) }
 
-    console.log(`[initiatePaymentSession] Fresh cart retrieved: ${freshCart.id}`)
-    console.log(`[initiatePaymentSession] Total: ${freshCart.total}, Currency: ${freshCart.currency_code}`)
-    console.log(`[initiatePaymentSession] Email: ${freshCart.email}`)
-    console.log(`[initiatePaymentSession] Shipping Methods: ${JSON.stringify((freshCart as any).shipping_methods?.map((m: any) => m.id))}`)
-
+    // 2. Normalize data for Razorpay (Uppercase currency, Normalized phone)
+    const currency = (freshCart.currency_code || "INR").toUpperCase()
     const normalizePhone = (phone: string | null) => {
       if (!phone) return "9999999999"
       const cleaned = phone.replace(/\D/g, "")
       if (cleaned.length === 10) return `+91${cleaned}`
-      if (cleaned.length > 10 && !phone.startsWith("+")) return `+${cleaned}`
-      return phone
+      return phone.startsWith("+") ? phone : `+${cleaned}`
     }
 
     const shippingPhone = normalizePhone(freshCart.shipping_address?.phone || null)
     const billingPhone = normalizePhone(freshCart.billing_address?.phone || null)
 
-    console.log(`[initiatePaymentSession] Shipping Address phone: ${shippingPhone}`)
-    console.log(`[initiatePaymentSession] Billing Address phone: ${billingPhone}`)
+    // 3. Update cart if needed (Phone & Billing Address)
+    console.log(`[initiatePaymentSession] Syncing cart: ${freshCart.id} (Phone: ${shippingPhone})`)
 
-    const headers = {
-      ...(await getAuthHeaders()),
+    const cartUpdates: any = {}
+    if (freshCart.shipping_address?.phone !== shippingPhone) {
+      cartUpdates.shipping_address = { ...freshCart.shipping_address, phone: shippingPhone }
     }
-
-    // ── Pre-payment fix: Ensure Phone Number exists ────────────────────────
-    if (freshCart.shipping_address?.phone !== shippingPhone || freshCart.billing_address?.phone !== billingPhone) {
-      console.log(`[initiatePaymentSession] Normalizing phone numbers...`)
-      try {
-        await sdk.store.cart.update(
-          freshCart.id,
-          {
-            shipping_address: {
-              ...(freshCart.shipping_address as any),
-              phone: shippingPhone
-            },
-            billing_address: {
-              ...(freshCart.billing_address as any),
-              phone: billingPhone
-            }
-          },
-          {},
-          headers
-        )
-      } catch (err: any) {
-        console.warn(`[initiatePaymentSession] Failed to normalize phone:`, err.message)
-      }
-    }
-
-    // ── Pre-payment fix: Ensure Billing Address exists ──────────────────────
     if (!freshCart.billing_address && freshCart.shipping_address) {
-      console.log(`[initiatePaymentSession] Billing address missing. Cloning from shipping...`)
+      cartUpdates.billing_address = {
+        ...freshCart.shipping_address,
+        phone: billingPhone,
+        country_code: (freshCart.shipping_address.country_code || "in").toLowerCase()
+      }
+    }
+
+    if (Object.keys(cartUpdates).length > 0) {
+      await sdk.store.cart.update(freshCart.id, cartUpdates, {}, headers)
+      // Re-fetch after update to ensure we have the latest version for the payment collection
+      freshCart = await retrieveCart(freshCart.id) || freshCart
+    }
+
+    // 4. Ensure payment collection is fresh
+    // If the cart has an old collection, delete it to avoid "cart not ready" due to stale totals
+    if ((freshCart as any).payment_collection?.id) {
+      console.log(`[initiatePaymentSession] Deleting stale payment collection: ${(freshCart as any).payment_collection.id}`)
       try {
-        await sdk.store.cart.update(
-          freshCart.id,
-          {
-            billing_address: {
-              first_name: freshCart.shipping_address.first_name,
-              last_name: freshCart.shipping_address.last_name,
-              address_1: freshCart.shipping_address.address_1,
-              city: freshCart.shipping_address.city,
-              country_code: freshCart.shipping_address.country_code,
-              postal_code: freshCart.shipping_address.postal_code,
-              phone: shippingPhone,
-            },
-          },
-          {},
+        await sdk.client.fetch(`/store/payment-collections/${(freshCart as any).payment_collection.id}`, {
+          method: "DELETE",
           headers
-        )
-      } catch (billErr: any) {
-        console.warn(`[initiatePaymentSession] Failed to clone billing address:`, billErr.message)
-      }
-    }
-
-    // ── Auto-attach shipping method if cart has none ────────────────────────
-    const cartShippingCount = (freshCart as any).shipping_methods?.length ?? 0
-    if (cartShippingCount === 0) {
-      console.log(`[initiatePaymentSession] Cart has no shipping method. Auto-attaching...`)
-      try {
-        const { shipping_options } = await sdk.client.fetch<{ shipping_options: any[] }>(
-          `/store/shipping-options?cart_id=${freshCart.id}`,
-          { method: "GET", headers, cache: "no-store" }
-        )
-        if (shipping_options && shipping_options.length > 0) {
-          await sdk.store.cart.addShippingMethod(
-            freshCart.id,
-            { option_id: shipping_options[0].id },
-            {},
-            headers
-          )
-        }
-      } catch (shipErr: any) {
-        console.warn(`[initiatePaymentSession] Could not auto-attach shipping:`, shipErr?.message)
-      }
-    }
-
-    // ── Payment Collection Management ───────────────────────────────────────
-    let paymentCollectionId = (freshCart as any).payment_collection?.id
-    if (!paymentCollectionId) {
-      console.log(`[initiatePaymentSession] Creating payment collection for cart: ${freshCart.id}`)
-      try {
-        const { payment_collection } = await sdk.client.fetch<any>(`/store/payment-collections`, {
-          method: "POST",
-          headers,
-          body: { cart_id: freshCart.id },
         })
-        paymentCollectionId = payment_collection.id
-
-        // RE-FETCH cart to ensure the collection is properly linked internally
-        const updatedCart = await retrieveCart(freshCart.id)
-        if (updatedCart) {
-          Object.assign(freshCart, updatedCart)
-        }
-      } catch (collErr: any) {
-        console.error(`[initiatePaymentSession] FAILED to create payment collection:`, collErr.message)
-        throw collErr
+      } catch (e) {
+        console.warn("[initiatePaymentSession] Failed to delete old collection (possibly already gone)")
       }
     }
 
-    console.log(`[initiatePaymentSession] Initializing for cart: ${freshCart.id}, provider: ${data.provider_id}`)
+    // 5. Create Fresh Payment Collection
+    console.log(`[initiatePaymentSession] Creating fresh collection for cart: ${freshCart.id}`)
+    const { payment_collection } = await sdk.client.fetch<any>(`/store/payment-collections`, {
+      method: "POST",
+      headers,
+      body: { cart_id: freshCart.id },
+    })
 
-    // ── Wait for sync ───────────────────────────────────────────────────────
-    await new Promise(resolve => setTimeout(resolve, 500))
-
+    // 6. Build Initiation Data for Razorpay
     const customer = (freshCart as any).customer || {
       email: freshCart.email,
-      first_name: (freshCart as any).shipping_address?.first_name || "Guest",
-      last_name: (freshCart as any).shipping_address?.last_name || "User",
+      first_name: freshCart.shipping_address?.first_name || "Guest",
+      last_name: freshCart.shipping_address?.last_name || "User",
       phone: shippingPhone
     }
 
     const cleanCart = {
       ...freshCart,
-      currency_code: (freshCart.currency_code || "INR").toUpperCase(),
-      shipping_address: freshCart.shipping_address ? {
-        ...freshCart.shipping_address,
-        phone: shippingPhone,
-        country_code: (freshCart.shipping_address.country_code || "in").toLowerCase()
-      } : null,
-      billing_address: freshCart.billing_address ? {
-        ...freshCart.billing_address,
-        phone: billingPhone,
-        country_code: (freshCart.billing_address.country_code || "in").toLowerCase()
-      } : null,
+      currency_code: currency,
+      shipping_address: { ...freshCart.shipping_address, phone: shippingPhone },
+      billing_address: { ...freshCart.billing_address, phone: billingPhone },
       customer
     }
 
@@ -509,7 +434,7 @@ export async function initiatePaymentSession(
         extra: cleanCart,
         cart_id: freshCart.id,
         amount: freshCart.total,
-        currency: (freshCart.currency_code || "INR").toUpperCase(),
+        currency: currency,
         _ts: Date.now(),
         context: {
           cart: cleanCart,
@@ -518,8 +443,10 @@ export async function initiatePaymentSession(
       },
     }
 
+    // 7. Initialize Payment Session
+    console.log(`[initiatePaymentSession] Final initiation for: ${data.provider_id}`)
     const { payment_collection: updatedCollection } = await sdk.client.fetch<any>(
-      `/store/payment-collections/${paymentCollectionId}/payment-sessions`,
+      `/store/payment-collections/${payment_collection.id}/payment-sessions`,
       {
         method: "POST",
         headers,
@@ -528,7 +455,6 @@ export async function initiatePaymentSession(
     )
 
     console.log(`[initiatePaymentSession] SUCCESS for: ${data.provider_id}`)
-
     const cartCacheTag = await getCacheTag("carts")
     revalidateTag(cartCacheTag)
 
@@ -540,9 +466,8 @@ export async function initiatePaymentSession(
       }
     }
   } catch (err: any) {
-    const errorMessage = err.message || String(err)
-    console.error(`[initiatePaymentSession] FAILED for ${data.provider_id}:`, errorMessage)
-    return { success: false, error: errorMessage }
+    console.error(`[initiatePaymentSession] FAILED for ${data.provider_id}:`, err.message || String(err))
+    return { success: false, error: err.message || String(err) }
   }
 }
 
