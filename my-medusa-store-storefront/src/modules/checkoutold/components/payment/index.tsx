@@ -23,6 +23,12 @@ const Payment = ({
     (paymentSession: any) => paymentSession.status === "pending"
   )
 
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const pathname = usePathname()
+
+  const isOpen = searchParams.get("step") === "payment"
+
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [cardBrand, setCardBrand] = useState<string | null>(null)
@@ -50,12 +56,6 @@ const Payment = ({
       console.log("[Payment] Component open but cart not ready yet. Email:", !!cart?.email, "Address:", !!cart?.shipping_address?.first_name)
     }
   }, [availablePaymentMethods, selectedPaymentMethod, cart?.email, cart?.shipping_address, isOpen])
-
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const pathname = usePathname()
-
-  const isOpen = searchParams.get("step") === "payment"
 
   const setPaymentMethod = async (method: string) => {
     setError(null)
