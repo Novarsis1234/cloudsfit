@@ -380,7 +380,6 @@ export async function initiatePaymentSession(
     }
 
     // ── Pre-payment fix: Ensure Phone Number exists ────────────────────────
-    // Razorpay requires a phone number. 
     if (freshCart.shipping_address?.phone !== shippingPhone || freshCart.billing_address?.phone !== billingPhone) {
       console.log(`[initiatePaymentSession] Normalizing phone numbers...`)
       try {
@@ -405,8 +404,6 @@ export async function initiatePaymentSession(
     }
 
     // ── Pre-payment fix: Ensure Billing Address exists ──────────────────────
-    // Razorpay plugins often require a billing address to be present on the cart
-    // object even if it's identical to shipping.
     if (!freshCart.billing_address && freshCart.shipping_address) {
       console.log(`[initiatePaymentSession] Billing address missing. Cloning from shipping...`)
       try {
@@ -420,24 +417,18 @@ export async function initiatePaymentSession(
               city: freshCart.shipping_address.city,
               country_code: freshCart.shipping_address.country_code,
               postal_code: freshCart.shipping_address.postal_code,
-              phone: freshCart.shipping_address.phone || "9999999999",
+              phone: shippingPhone,
             },
           },
           {},
           headers
         )
-        console.log(`[initiatePaymentSession] Billing address cloned successfully.`)
       } catch (billErr: any) {
         console.warn(`[initiatePaymentSession] Failed to clone billing address:`, billErr.message)
       }
     }
-    // ────────────────────────────────────────────────────────────────────────
 
     // ── Auto-attach shipping method if cart has none ────────────────────────
-    // The Razorpay plugin returns "cart not ready" when the cart has no
-    // shipping method, even for free shipping. We fix this here — right before
-    // calling the payment provider — so it works regardless of what triggered
-    // initiatePaymentSession (page load, useEffect, or direct click).
     const cartShippingCount = (freshCart as any).shipping_methods?.length ?? 0
     if (cartShippingCount === 0) {
       console.log(`[initiatePaymentSession] Cart has no shipping method. Auto-attaching...`)
@@ -453,23 +444,38 @@ export async function initiatePaymentSession(
             {},
             headers
           )
-          console.log(`[initiatePaymentSession] Shipping method auto-attached: ${shipping_options[0].id}`)
-        } else {
-          console.warn(`[initiatePaymentSession] No shipping options available for cart ${freshCart.id}`)
         }
       } catch (shipErr: any) {
         console.warn(`[initiatePaymentSession] Could not auto-attach shipping:`, shipErr?.message)
-        // Don't fail — let the payment provider decide
       }
     }
-    // ────────────────────────────────────────────────────────────────────────
+
+    // ── Payment Collection Management ───────────────────────────────────────
+    let paymentCollectionId = (freshCart as any).payment_collection?.id
+    if (!paymentCollectionId) {
+      console.log(`[initiatePaymentSession] Creating payment collection for cart: ${freshCart.id}`)
+      try {
+        const { payment_collection } = await sdk.client.fetch<any>(`/store/payment-collections`, {
+          method: "POST",
+          headers,
+          body: { cart_id: freshCart.id },
+        })
+        paymentCollectionId = payment_collection.id
+
+        // RE-FETCH cart to ensure the collection is properly linked internally
+        const updatedCart = await retrieveCart(freshCart.id)
+        if (updatedCart) {
+          Object.assign(freshCart, updatedCart)
+        }
+      } catch (collErr: any) {
+        console.error(`[initiatePaymentSession] FAILED to create payment collection:`, collErr.message)
+        throw collErr
+      }
+    }
 
     console.log(`[initiatePaymentSession] Initializing for cart: ${freshCart.id}, provider: ${data.provider_id}`)
 
     // ── Wait for sync ───────────────────────────────────────────────────────
-    // Sometimes Medusa v2 needs a brief moment to sync the newly added 
-    // shipping method or billing address to the persistent storage before 
-    // the payment provider's initiatePayment is called.
     await new Promise(resolve => setTimeout(resolve, 500))
 
     const customer = (freshCart as any).customer || {
@@ -479,18 +485,18 @@ export async function initiatePaymentSession(
       phone: shippingPhone
     }
 
-    // Build a complete cart object for the plugin.
-    // We pass extra fields because some plugins are picky about nested structures.
     const cleanCart = {
       ...freshCart,
       currency_code: (freshCart.currency_code || "INR").toUpperCase(),
       shipping_address: freshCart.shipping_address ? {
         ...freshCart.shipping_address,
-        phone: shippingPhone
+        phone: shippingPhone,
+        country_code: (freshCart.shipping_address.country_code || "in").toLowerCase()
       } : null,
       billing_address: freshCart.billing_address ? {
         ...freshCart.billing_address,
-        phone: billingPhone
+        phone: billingPhone,
+        country_code: (freshCart.billing_address.country_code || "in").toLowerCase()
       } : null,
       customer
     }
@@ -503,44 +509,13 @@ export async function initiatePaymentSession(
         extra: cleanCart,
         cart_id: freshCart.id,
         amount: freshCart.total,
-        currency: freshCart.currency_code,
+        currency: (freshCart.currency_code || "INR").toUpperCase(),
         _ts: Date.now(),
-        // Redundant context inside data for picky plugins
         context: {
           cart: cleanCart,
           customer: customer
         }
       },
-    }
-
-    console.log(`[initiatePaymentSession] Calling Backend Session for: ${data.provider_id}`)
-
-    // ── Payment Collection Management ───────────────────────────────────────
-    let paymentCollectionId = (freshCart as any).payment_collection?.id
-    if (!paymentCollectionId) {
-      console.log(`[initiatePaymentSession] Creating payment collection for cart: ${freshCart.id}, Amount: ${freshCart.total}`)
-      try {
-        const { payment_collection } = await sdk.client.fetch<any>(`/store/payment-collections`, {
-          method: "POST",
-          headers,
-          body: {
-            cart_id: freshCart.id,
-            amount: freshCart.total,
-            currency_code: freshCart.currency_code
-          },
-        })
-        paymentCollectionId = payment_collection.id
-        console.log(`[initiatePaymentSession] Payment collection created: ${paymentCollectionId}`)
-
-        // RE-FETCH cart to ensure the collection is properly linked internally
-        const updatedCart = await retrieveCart(freshCart.id)
-        if (updatedCart) {
-          Object.assign(freshCart, updatedCart)
-        }
-      } catch (collErr: any) {
-        console.error(`[initiatePaymentSession] FAILED to create payment collection:`, collErr.message)
-        throw collErr
-      }
     }
 
     const { payment_collection: updatedCollection } = await sdk.client.fetch<any>(
@@ -567,11 +542,7 @@ export async function initiatePaymentSession(
   } catch (err: any) {
     const errorMessage = err.message || String(err)
     console.error(`[initiatePaymentSession] FAILED for ${data.provider_id}:`, errorMessage)
-
-    return {
-      success: false,
-      error: errorMessage
-    }
+    return { success: false, error: errorMessage }
   }
 }
 
