@@ -354,63 +354,59 @@ export async function initiatePaymentSession(
     if (!freshCart) return { success: false, error: "Unable to retrieve fresh cart." }
 
     const headers = { ...(await getAuthHeaders()) }
-
-    // 2. Normalize data for Razorpay (Uppercase currency, Normalized phone)
     const currency = (freshCart.currency_code || "INR").toUpperCase()
+
+    // 2. Normalize and Mirror Data
     const normalizePhone = (phone: string | null) => {
       if (!phone) return "9999999999"
       const cleaned = phone.replace(/\D/g, "")
       if (cleaned.length === 10) return `+91${cleaned}`
-      return phone.startsWith("+") ? phone : `+${cleaned}`
+      return (phone.startsWith("+") || cleaned.startsWith("91")) ? (phone.startsWith("+") ? phone : `+${cleaned}`) : `+91${cleaned}`
     }
 
     const shippingPhone = normalizePhone(freshCart.shipping_address?.phone || null)
-    const billingPhone = normalizePhone(freshCart.billing_address?.phone || null)
 
-    // 3. Update cart if needed (Phone & Billing Address)
-    console.log(`[initiatePaymentSession] Syncing cart: ${freshCart.id} (Phone: ${shippingPhone})`)
+    // Safety Force Update: Ensure Billing exists and Phone is normalized
+    console.log(`[initiatePaymentSession] Syncing cart readiness: ${freshCart.id}`)
+    await sdk.store.cart.update(freshCart.id, {
+      email: freshCart.email,
+      shipping_address: { ...freshCart.shipping_address, phone: shippingPhone, country_code: "IN" },
+      billing_address: { ...freshCart.shipping_address, phone: shippingPhone, country_code: "IN" }
+    }, {}, headers)
 
-    const cartUpdates: any = {}
-    if (freshCart.shipping_address?.phone !== shippingPhone) {
-      cartUpdates.shipping_address = { ...freshCart.shipping_address, phone: shippingPhone }
-    }
-    if (!freshCart.billing_address && freshCart.shipping_address) {
-      cartUpdates.billing_address = {
-        ...freshCart.shipping_address,
-        phone: billingPhone,
-        country_code: (freshCart.shipping_address.country_code || "in").toLowerCase()
+    // Wait for address propagation
+    await new Promise(resolve => setTimeout(resolve, 800))
+    freshCart = await retrieveCart(cart.id) || freshCart
+
+    // 3. Ensure Shipping Method
+    const shippingMethods = (freshCart as any).shipping_methods || []
+    if (shippingMethods.length === 0) {
+      const { shipping_options } = await sdk.client.fetch<any>(`/store/shipping-options?cart_id=${freshCart.id}`, { headers })
+      if (shipping_options?.length > 0) {
+        await sdk.store.cart.addShippingMethod(freshCart.id, { option_id: shipping_options[0].id }, {}, headers)
+        await new Promise(resolve => setTimeout(resolve, 500))
+        freshCart = await retrieveCart(cart.id) || freshCart
       }
     }
 
-    if (Object.keys(cartUpdates).length > 0) {
-      await sdk.store.cart.update(freshCart.id, cartUpdates, {}, headers)
-      // Re-fetch after update to ensure we have the latest version for the payment collection
-      freshCart = await retrieveCart(freshCart.id) || freshCart
-    }
-
-    // 4. Ensure payment collection is fresh
-    // If the cart has an old collection, delete it to avoid "cart not ready" due to stale totals
+    // 4. Reset Payment Collection (Nuclear clean start)
     if ((freshCart as any).payment_collection?.id) {
-      console.log(`[initiatePaymentSession] Deleting stale payment collection: ${(freshCart as any).payment_collection.id}`)
       try {
-        await sdk.client.fetch(`/store/payment-collections/${(freshCart as any).payment_collection.id}`, {
-          method: "DELETE",
-          headers
-        })
-      } catch (e) {
-        console.warn("[initiatePaymentSession] Failed to delete old collection (possibly already gone)")
-      }
+        await sdk.client.fetch(`/store/payment-collections/${(freshCart as any).payment_collection.id}`, { method: "DELETE", headers })
+      } catch (e) { }
     }
 
-    // 5. Create Fresh Payment Collection
-    console.log(`[initiatePaymentSession] Creating fresh collection for cart: ${freshCart.id}`)
     const { payment_collection } = await sdk.client.fetch<any>(`/store/payment-collections`, {
       method: "POST",
       headers,
       body: { cart_id: freshCart.id },
     })
 
-    // 6. Build Initiation Data for Razorpay
+    // Wait for collection to link
+    await new Promise(resolve => setTimeout(resolve, 1000))
+    freshCart = await retrieveCart(cart.id) || freshCart
+
+    // 5. Build Robust Initiation Body
     const customer = (freshCart as any).customer || {
       email: freshCart.email,
       first_name: freshCart.shipping_address?.first_name || "Guest",
@@ -421,42 +417,38 @@ export async function initiatePaymentSession(
     const cleanCart = {
       ...freshCart,
       currency_code: currency,
-      shipping_address: { ...freshCart.shipping_address, phone: shippingPhone },
-      billing_address: { ...freshCart.billing_address, phone: billingPhone },
+      region: freshCart.region ? { ...freshCart.region, currency_code: currency } : null,
+      shipping_address: { ...freshCart.shipping_address, phone: shippingPhone, country_code: "IN" },
+      billing_address: { ...freshCart.shipping_address, phone: shippingPhone, country_code: "IN" },
       customer
     }
 
+    // CRITICAL for Medusa v2: 'context' must be a TOP-LEVEL field in the request
     const body = {
       provider_id: data.provider_id,
       data: {
         ...(data as any).data,
-        cart: cleanCart,
-        extra: cleanCart,
-        cart_id: freshCart.id,
         amount: freshCart.total,
         currency: currency,
-        _ts: Date.now(),
-        context: {
-          cart: cleanCart,
-          customer: customer
-        }
+        cart: cleanCart,
+        extra: cleanCart,
+        _ts: Date.now()
       },
+      context: {
+        cart: cleanCart,
+        customer: customer
+      }
     }
 
-    // 7. Initialize Payment Session
-    console.log(`[initiatePaymentSession] Final initiation for: ${data.provider_id}`)
+    // 6. Initiation Call
+    console.log(`[initiatePaymentSession] Force-initiating: ${data.provider_id}`)
     const { payment_collection: updatedCollection } = await sdk.client.fetch<any>(
       `/store/payment-collections/${payment_collection.id}/payment-sessions`,
-      {
-        method: "POST",
-        headers,
-        body,
-      }
+      { method: "POST", headers, body }
     )
 
-    console.log(`[initiatePaymentSession] SUCCESS for: ${data.provider_id}`)
-    const cartCacheTag = await getCacheTag("carts")
-    revalidateTag(cartCacheTag)
+    console.log(`[initiatePaymentSession] SUCCESS! (ID: ${updatedCollection.id})`)
+    revalidateTag(await getCacheTag("carts"))
 
     return {
       success: true,
@@ -466,7 +458,7 @@ export async function initiatePaymentSession(
       }
     }
   } catch (err: any) {
-    console.error(`[initiatePaymentSession] FAILED for ${data.provider_id}:`, err.message || String(err))
+    console.error(`[initiatePaymentSession] NUCLEAR EXIT:`, err.message || String(err))
     return { success: false, error: err.message || String(err) }
   }
 }
