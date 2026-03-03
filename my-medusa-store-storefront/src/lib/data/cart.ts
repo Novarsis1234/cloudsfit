@@ -359,11 +359,37 @@ export async function initiatePaymentSession(
     console.log(`[initiatePaymentSession] Fresh cart retrieved: ${freshCart.id}`)
     console.log(`[initiatePaymentSession] Email: ${freshCart.email}`)
     console.log(`[initiatePaymentSession] Shipping Methods: ${JSON.stringify((freshCart as any).shipping_methods?.map((m: any) => m.id))}`)
-    console.log(`[initiatePaymentSession] Shipping Address present: ${!!freshCart.shipping_address}`)
-    console.log(`[initiatePaymentSession] Billing Address present: ${!!freshCart.billing_address}`)
+    console.log(`[initiatePaymentSession] Shipping Address present: ${!!freshCart.shipping_address}, Phone: ${freshCart.shipping_address?.phone || "MISSING"}`)
+    console.log(`[initiatePaymentSession] Billing Address present: ${!!freshCart.billing_address}, Phone: ${freshCart.billing_address?.phone || "MISSING"}`)
 
     const headers = {
       ...(await getAuthHeaders()),
+    }
+
+    // ── Pre-payment fix: Ensure Phone Number exists ────────────────────────
+    // Razorpay requires a phone number. If missing from both addresses, we set a default.
+    if (!freshCart.shipping_address?.phone && !freshCart.billing_address?.phone) {
+      console.log(`[initiatePaymentSession] No phone number found in any address. Setting fallback...`)
+      try {
+        await sdk.store.cart.update(
+          freshCart.id,
+          {
+            shipping_address: {
+              ...(freshCart.shipping_address as any),
+              phone: "9999999999"
+            },
+            billing_address: {
+              ...(freshCart.billing_address as any),
+              phone: "9999999999"
+            }
+          },
+          {},
+          headers
+        )
+        console.log(`[initiatePaymentSession] Fallback phone number set.`)
+      } catch (err: any) {
+        console.warn(`[initiatePaymentSession] Failed to set fallback phone:`, err.message)
+      }
     }
 
     // ── Pre-payment fix: Ensure Billing Address exists ──────────────────────
@@ -382,7 +408,7 @@ export async function initiatePaymentSession(
               city: freshCart.shipping_address.city,
               country_code: freshCart.shipping_address.country_code,
               postal_code: freshCart.shipping_address.postal_code,
-              phone: freshCart.shipping_address.phone,
+              phone: freshCart.shipping_address.phone || "9999999999",
             },
           },
           {},
@@ -450,7 +476,7 @@ export async function initiatePaymentSession(
         address_1: freshCart.shipping_address.address_1,
         city: freshCart.shipping_address.city,
         country_code: freshCart.shipping_address.country_code,
-        phone: freshCart.shipping_address.phone,
+        phone: freshCart.shipping_address.phone || "9999999999",
       } : null,
       billing_address: freshCart.billing_address ? {
         id: freshCart.billing_address.id,
@@ -459,21 +485,24 @@ export async function initiatePaymentSession(
         address_1: freshCart.billing_address.address_1,
         city: freshCart.billing_address.city,
         country_code: freshCart.billing_address.country_code,
-        phone: freshCart.billing_address.phone,
+        phone: freshCart.billing_address.phone || "9999999999",
       } : null,
       customer: freshCart.customer ? {
         id: freshCart.customer.id,
         email: freshCart.customer.email,
-        phone: freshCart.customer.phone,
+        phone: freshCart.customer.phone || "9999999999",
       } : (freshCart.shipping_address?.phone ? {
         email: freshCart.email,
         phone: freshCart.shipping_address.phone
-      } : null)
+      } : {
+        email: freshCart.email,
+        phone: "9999999999"
+      })
     }
 
     // Prepare initiation data.
     // We nest the cart in 'extra' as required by the sgftech/payment-razorpay plugin.
-    // NOTE: Removed top-level 'context' as it causes 400 errors in v2 Store API.
+    // NOTE: In Medusa v2, context must be alongside data, NOT inside it.
     const body = {
       provider_id: data.provider_id,
       data: {
@@ -482,12 +511,17 @@ export async function initiatePaymentSession(
         cart: cleanCart, // Fallback for some versions
         cart_id: freshCart.id,
         _ts: Date.now(), // Cache busting
-        // Some older plugins look for 'extra' in a nested 'context' inside 'data'
-        context: {
-          extra: cleanCart,
-          customer: customer,
-        }
       },
+      context: {
+        extra: cleanCart,
+        customer_id: freshCart.customer_id,
+        email: freshCart.email,
+        customer: customer,
+        shipping_address: freshCart.shipping_address,
+        billing_address: freshCart.billing_address,
+        currency_code: freshCart.currency_code,
+        total: freshCart.total,
+      }
     }
 
     console.log(`[initiatePaymentSession] Calling Backend for: ${data.provider_id}, Cart: ${freshCart.id}`)
