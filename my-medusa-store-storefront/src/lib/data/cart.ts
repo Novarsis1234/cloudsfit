@@ -1,4 +1,4 @@
-﻿"use server"
+"use server"
 
 import { sdk } from "@/lib/config"
 import medusaError from "@/lib/util/medusa-error"
@@ -318,6 +318,30 @@ export async function setShippingMethod({
       revalidateTag(cartCacheTag)
     })
     .catch(medusaError)
+}
+
+/**
+ * Like setShippingMethod but does NOT call revalidateTag.
+ * Safe to use during page render (e.g. in page.tsx) where revalidateTag is forbidden.
+ */
+export async function ensureShippingMethod({
+  cartId,
+  shippingMethodId,
+}: {
+  cartId: string
+  shippingMethodId: string
+}): Promise<boolean> {
+  try {
+    const headers = {
+      ...(await getAuthHeaders()),
+    }
+    await sdk.store.cart.addShippingMethod(cartId, { option_id: shippingMethodId }, {}, headers)
+    console.log(`[ensureShippingMethod] Successfully set shipping method ${shippingMethodId} on cart ${cartId}`)
+    return true
+  } catch (e: any) {
+    console.warn(`[ensureShippingMethod] Failed to set shipping method:`, e?.message || e)
+    return false
+  }
 }
 
 export async function initiatePaymentSession(
