@@ -1,5 +1,6 @@
-﻿import { listCartShippingMethods } from "@/lib/data/fulfillment"
+import { listCartShippingMethods } from "@/lib/data/fulfillment"
 import { listCartPaymentMethods } from "@/lib/data/payment"
+import { setShippingMethod } from "@/lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
 import { Heading, Text } from "@medusajs/ui"
 import Addresses from "@/modules/checkoutold/components/addresses"
@@ -23,6 +24,20 @@ export default async function CheckoutForm({
   console.log(`[CheckoutForm] Found ${shippingMethods?.length || 0} shipping methods`)
   const paymentMethods = await listCartPaymentMethods(cart.region?.id ?? "")
   console.log(`[CheckoutForm] Found ${paymentMethods?.length || 0} payment methods:`, paymentMethods?.map(m => m.id))
+
+  // Auto-select the shipping method if only one option exists (e.g. free shipping)
+  // and the cart doesn't already have a shipping method attached.
+  // This prevents the Medusa backend from returning "cart not ready" at order placement.
+  const cartHasShipping = (cart.shipping_methods?.length ?? 0) > 0
+  if (!cartHasShipping && shippingMethods?.length === 1) {
+    try {
+      console.log(`[CheckoutForm] Auto-selecting single shipping method: ${shippingMethods[0].id}`)
+      await setShippingMethod({ cartId: cart.id, shippingMethodId: shippingMethods[0].id })
+      console.log(`[CheckoutForm] Shipping method auto-selected successfully`)
+    } catch (e) {
+      console.warn(`[CheckoutForm] Failed to auto-select shipping method:`, e)
+    }
+  }
 
   if (!shippingMethods || !paymentMethods) {
     console.warn("[CheckoutForm] Missing shipping or payment methods!")
