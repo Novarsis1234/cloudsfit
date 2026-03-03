@@ -463,7 +463,6 @@ export async function initiatePaymentSession(
     }
 
     // Build a simplified cart object for the plugin.
-    // We pass essential fields that the Razorpay plugin needs to identify the cart.
     const cleanCart = {
       id: freshCart.id,
       total: freshCart.total,
@@ -491,37 +490,31 @@ export async function initiatePaymentSession(
         id: freshCart.customer.id,
         email: freshCart.customer.email,
         phone: freshCart.customer.phone || "9999999999",
-      } : (freshCart.shipping_address?.phone ? {
-        email: freshCart.email,
-        phone: freshCart.shipping_address.phone
       } : {
         email: freshCart.email,
-        phone: "9999999999"
-      })
+        phone: (freshCart as any).shipping_address?.phone || "9999999999"
+      }
     }
 
     // Prepare initiation data.
-    // We nest the cart in 'extra' as required by the sgftech/payment-razorpay plugin.
-    // NOTE: In Medusa v2, context must be alongside data, NOT inside it.
+    // NOTE: Removed top-level 'context' as it causes 'Unrecognized fields' error.
+    // We put everything inside 'data' so the plugin can access it.
     const body = {
       provider_id: data.provider_id,
       data: {
         ...(data as any).data,
         extra: cleanCart,
-        cart: cleanCart, // Fallback for some versions
+        cart: cleanCart, // Common fallback
         cart_id: freshCart.id,
         _ts: Date.now(), // Cache busting
+        // Some plugins look for context nested inside data
+        context: {
+          extra: cleanCart,
+          customer: customer,
+          shipping_address: freshCart.shipping_address,
+          billing_address: freshCart.billing_address,
+        }
       },
-      context: {
-        extra: cleanCart,
-        customer_id: freshCart.customer_id,
-        email: freshCart.email,
-        customer: customer,
-        shipping_address: freshCart.shipping_address,
-        billing_address: freshCart.billing_address,
-        currency_code: freshCart.currency_code,
-        total: freshCart.total,
-      }
     }
 
     console.log(`[initiatePaymentSession] Calling Backend for: ${data.provider_id}, Cart: ${freshCart.id}`)
