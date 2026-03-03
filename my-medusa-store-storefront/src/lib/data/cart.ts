@@ -360,6 +360,37 @@ export async function initiatePaymentSession(
       ...(await getAuthHeaders()),
     }
 
+    // ── Auto-attach shipping method if cart has none ────────────────────────
+    // The Razorpay plugin returns "cart not ready" when the cart has no
+    // shipping method, even for free shipping. We fix this here — right before
+    // calling the payment provider — so it works regardless of what triggered
+    // initiatePaymentSession (page load, useEffect, or direct click).
+    const cartShippingCount = (freshCart as any).shipping_methods?.length ?? 0
+    if (cartShippingCount === 0) {
+      console.log(`[initiatePaymentSession] Cart has no shipping method. Auto-attaching...`)
+      try {
+        const { shipping_options } = await sdk.client.fetch<{ shipping_options: any[] }>(
+          `/store/shipping-options?cart_id=${freshCart.id}`,
+          { method: "GET", headers, cache: "no-store" }
+        )
+        if (shipping_options && shipping_options.length > 0) {
+          await sdk.store.cart.addShippingMethod(
+            freshCart.id,
+            { option_id: shipping_options[0].id },
+            {},
+            headers
+          )
+          console.log(`[initiatePaymentSession] Shipping method auto-attached: ${shipping_options[0].id}`)
+        } else {
+          console.warn(`[initiatePaymentSession] No shipping options available for cart ${freshCart.id}`)
+        }
+      } catch (shipErr: any) {
+        console.warn(`[initiatePaymentSession] Could not auto-attach shipping:`, shipErr?.message)
+        // Don't fail — let the payment provider decide
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     console.log(`[initiatePaymentSession] Initializing for cart: ${freshCart.id}, provider: ${data.provider_id}`)
 
     // Defensive check: Razorpay plugin crashes if guest customer has no object
