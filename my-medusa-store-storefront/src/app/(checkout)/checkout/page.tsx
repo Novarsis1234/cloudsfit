@@ -1,5 +1,6 @@
-﻿import { retrieveCart } from "@/lib/data/cart"
+import { retrieveCart, ensureShippingMethod } from "@/lib/data/cart"
 import { retrieveCustomer } from "@/lib/data/customer"
+import { listCartShippingMethods } from "@/lib/data/fulfillment"
 import PaymentWrapper from "@/modules/checkoutold/components/payment-wrapper"
 import CheckoutForm from "@/modules/checkoutold/templates/checkout-form"
 import CheckoutSummary from "@/modules/checkoutold/templates/checkout-summary"
@@ -15,6 +16,18 @@ export default async function Checkout() {
 
   if (!cart) {
     return redirect("/cart")
+  }
+
+  // Auto-attach shipping method when cart has none (e.g. free shipping).
+  // Must be done here in page.tsx — NOT inside a component render — because
+  // Next.js forbids revalidateTag during render. ensureShippingMethod skips revalidateTag.
+  const cartHasShipping = (cart.shipping_methods?.length ?? 0) > 0
+  if (!cartHasShipping) {
+    const shippingOptions = await listCartShippingMethods(cart.id)
+    if (shippingOptions && shippingOptions.length > 0) {
+      console.log(`[Checkout page] Auto-selecting shipping method: ${shippingOptions[0].id}`)
+      await ensureShippingMethod({ cartId: cart.id, shippingMethodId: shippingOptions[0].id })
+    }
   }
 
   const customer = await retrieveCustomer()
@@ -38,4 +51,3 @@ export default async function Checkout() {
     </div>
   )
 }
-
