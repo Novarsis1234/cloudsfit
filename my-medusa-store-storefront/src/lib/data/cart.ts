@@ -357,38 +357,50 @@ export async function initiatePaymentSession(
     }
 
     console.log(`[initiatePaymentSession] Fresh cart retrieved: ${freshCart.id}`)
+    console.log(`[initiatePaymentSession] Total: ${freshCart.total}, Currency: ${freshCart.currency_code}`)
     console.log(`[initiatePaymentSession] Email: ${freshCart.email}`)
     console.log(`[initiatePaymentSession] Shipping Methods: ${JSON.stringify((freshCart as any).shipping_methods?.map((m: any) => m.id))}`)
-    console.log(`[initiatePaymentSession] Shipping Address present: ${!!freshCart.shipping_address}, Phone: ${freshCart.shipping_address?.phone || "MISSING"}`)
-    console.log(`[initiatePaymentSession] Billing Address present: ${!!freshCart.billing_address}, Phone: ${freshCart.billing_address?.phone || "MISSING"}`)
+
+    const normalizePhone = (phone: string | null) => {
+      if (!phone) return "9999999999"
+      const cleaned = phone.replace(/\D/g, "")
+      if (cleaned.length === 10) return `+91${cleaned}`
+      if (cleaned.length > 10 && !phone.startsWith("+")) return `+${cleaned}`
+      return phone
+    }
+
+    const shippingPhone = normalizePhone(freshCart.shipping_address?.phone || null)
+    const billingPhone = normalizePhone(freshCart.billing_address?.phone || null)
+
+    console.log(`[initiatePaymentSession] Shipping Address phone: ${shippingPhone}`)
+    console.log(`[initiatePaymentSession] Billing Address phone: ${billingPhone}`)
 
     const headers = {
       ...(await getAuthHeaders()),
     }
 
     // ── Pre-payment fix: Ensure Phone Number exists ────────────────────────
-    // Razorpay requires a phone number. If missing from both addresses, we set a default.
-    if (!freshCart.shipping_address?.phone && !freshCart.billing_address?.phone) {
-      console.log(`[initiatePaymentSession] No phone number found in any address. Setting fallback...`)
+    // Razorpay requires a phone number. 
+    if (freshCart.shipping_address?.phone !== shippingPhone || freshCart.billing_address?.phone !== billingPhone) {
+      console.log(`[initiatePaymentSession] Normalizing phone numbers...`)
       try {
         await sdk.store.cart.update(
           freshCart.id,
           {
             shipping_address: {
               ...(freshCart.shipping_address as any),
-              phone: "9999999999"
+              phone: shippingPhone
             },
             billing_address: {
               ...(freshCart.billing_address as any),
-              phone: "9999999999"
+              phone: billingPhone
             }
           },
           {},
           headers
         )
-        console.log(`[initiatePaymentSession] Fallback phone number set.`)
       } catch (err: any) {
-        console.warn(`[initiatePaymentSession] Failed to set fallback phone:`, err.message)
+        console.warn(`[initiatePaymentSession] Failed to normalize phone:`, err.message)
       }
     }
 
@@ -454,81 +466,81 @@ export async function initiatePaymentSession(
 
     console.log(`[initiatePaymentSession] Initializing for cart: ${freshCart.id}, provider: ${data.provider_id}`)
 
-    // Defensive check: Razorpay plugin crashes if guest customer has no object
+    // ── Wait for sync ───────────────────────────────────────────────────────
+    // Sometimes Medusa v2 needs a brief moment to sync the newly added 
+    // shipping method or billing address to the persistent storage before 
+    // the payment provider's initiatePayment is called.
+    await new Promise(resolve => setTimeout(resolve, 500))
+
     const customer = (freshCart as any).customer || {
       email: freshCart.email,
       first_name: (freshCart as any).shipping_address?.first_name || "Guest",
       last_name: (freshCart as any).shipping_address?.last_name || "User",
-      phone: (freshCart as any).shipping_address?.phone || (freshCart as any).billing_address?.phone || "9999999999"
+      phone: shippingPhone
     }
 
-    // Build a simplified cart object for the plugin.
+    // Build a complete cart object for the plugin.
+    // We pass extra fields because some plugins are picky about nested structures.
     const cleanCart = {
-      id: freshCart.id,
-      total: freshCart.total,
-      currency_code: freshCart.currency_code,
-      email: freshCart.email,
+      ...freshCart,
+      currency_code: (freshCart.currency_code || "INR").toUpperCase(),
       shipping_address: freshCart.shipping_address ? {
-        id: freshCart.shipping_address.id,
-        first_name: freshCart.shipping_address.first_name,
-        last_name: freshCart.shipping_address.last_name,
-        address_1: freshCart.shipping_address.address_1,
-        city: freshCart.shipping_address.city,
-        country_code: freshCart.shipping_address.country_code,
-        phone: freshCart.shipping_address.phone || "9999999999",
+        ...freshCart.shipping_address,
+        phone: shippingPhone
       } : null,
       billing_address: freshCart.billing_address ? {
-        id: freshCart.billing_address.id,
-        first_name: freshCart.billing_address.first_name,
-        last_name: freshCart.billing_address.last_name,
-        address_1: freshCart.billing_address.address_1,
-        city: freshCart.billing_address.city,
-        country_code: freshCart.billing_address.country_code,
-        phone: freshCart.billing_address.phone || "9999999999",
+        ...freshCart.billing_address,
+        phone: billingPhone
       } : null,
-      customer: freshCart.customer ? {
-        id: freshCart.customer.id,
-        email: freshCart.customer.email,
-        phone: freshCart.customer.phone || "9999999999",
-      } : {
-        email: freshCart.email,
-        phone: (freshCart as any).shipping_address?.phone || "9999999999"
-      }
+      customer
     }
 
-    // Prepare initiation data.
-    // NOTE: Removed top-level 'context' as it causes 'Unrecognized fields' error.
-    // We put everything inside 'data' so the plugin can access it.
     const body = {
       provider_id: data.provider_id,
       data: {
         ...(data as any).data,
+        cart: cleanCart,
         extra: cleanCart,
-        cart: cleanCart, // Common fallback
         cart_id: freshCart.id,
-        _ts: Date.now(), // Cache busting
-        // Some plugins look for context nested inside data
+        amount: freshCart.total,
+        currency: freshCart.currency_code,
+        _ts: Date.now(),
+        // Redundant context inside data for picky plugins
         context: {
-          extra: cleanCart,
-          customer: customer,
-          shipping_address: freshCart.shipping_address,
-          billing_address: freshCart.billing_address,
+          cart: cleanCart,
+          customer: customer
         }
       },
     }
 
-    console.log(`[initiatePaymentSession] Calling Backend for: ${data.provider_id}, Cart: ${freshCart.id}`)
+    console.log(`[initiatePaymentSession] Calling Backend Session for: ${data.provider_id}`)
 
-    // Use direct fetch to ensure no SDK overhead and full control over the body structure
+    // ── Payment Collection Management ───────────────────────────────────────
     let paymentCollectionId = (freshCart as any).payment_collection?.id
     if (!paymentCollectionId) {
-      console.log(`[initiatePaymentSession] Creating payment collection for cart: ${freshCart.id}`)
-      const { payment_collection } = await sdk.client.fetch<any>(`/store/payment-collections`, {
-        method: "POST",
-        headers,
-        body: { cart_id: freshCart.id },
-      })
-      paymentCollectionId = payment_collection.id
+      console.log(`[initiatePaymentSession] Creating payment collection for cart: ${freshCart.id}, Amount: ${freshCart.total}`)
+      try {
+        const { payment_collection } = await sdk.client.fetch<any>(`/store/payment-collections`, {
+          method: "POST",
+          headers,
+          body: {
+            cart_id: freshCart.id,
+            amount: freshCart.total,
+            currency_code: freshCart.currency_code
+          },
+        })
+        paymentCollectionId = payment_collection.id
+        console.log(`[initiatePaymentSession] Payment collection created: ${paymentCollectionId}`)
+
+        // RE-FETCH cart to ensure the collection is properly linked internally
+        const updatedCart = await retrieveCart(freshCart.id)
+        if (updatedCart) {
+          Object.assign(freshCart, updatedCart)
+        }
+      } catch (collErr: any) {
+        console.error(`[initiatePaymentSession] FAILED to create payment collection:`, collErr.message)
+        throw collErr
+      }
     }
 
     const { payment_collection: updatedCollection } = await sdk.client.fetch<any>(
